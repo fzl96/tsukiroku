@@ -77,24 +77,6 @@ export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
   "YEARLY",
 ])
 
-export const verification = pgTable(
-  "verification",
-  {
-    id: id(),
-    identifier: text("identifier").notNull(),
-    value: text("value").notNull(),
-    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
-    createdAt: createdAt(),
-    updatedAt: updatedAt(),
-  },
-  (table) => [
-    unique("verification_identifier_value_unique").on(
-      table.identifier,
-      table.value,
-    ),
-  ],
-)
-
 export const userFinanceSettings = pgTable(
   "user_finance_settings",
   {
