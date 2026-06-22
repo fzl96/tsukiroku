@@ -23,6 +23,10 @@ type ActionResult<T = unknown> = {
   error?: string
 }
 
+export type SsoSignInState = {
+  error?: string
+}
+
 async function getAuthRedirectUrl() {
   const headerStore = await headers()
   const origin = headerStore.get("origin")
@@ -100,6 +104,22 @@ export async function signInWithGitHub() {
   return signInWithOAuth("github")
 }
 
+export async function signInWithGoogleForm() {
+  const result = await signInWithGoogle()
+
+  if (!result.success) {
+    throw new Error(result.error ?? "Unable to start Google sign-in.")
+  }
+}
+
+export async function signInWithGitHubForm() {
+  const result = await signInWithGitHub()
+
+  if (!result.success) {
+    throw new Error(result.error ?? "Unable to start GitHub sign-in.")
+  }
+}
+
 export async function signInWithSSO(input: unknown): Promise<ActionResult> {
   const parsedInput = ssoSignInSchema.safeParse(input)
 
@@ -148,6 +168,23 @@ export async function signInWithSSO(input: unknown): Promise<ActionResult> {
       },
     }
   })
+}
+
+export async function signInWithSSOForm(
+  _state: SsoSignInState,
+  formData: FormData,
+): Promise<SsoSignInState> {
+  const domainValue = formData.get("domain")
+  const domain = typeof domainValue === "string" ? domainValue : ""
+  const result = await signInWithSSO({ domain })
+
+  if (!result.success) {
+    return {
+      error: result.error ?? "Unable to start SSO sign-in.",
+    }
+  }
+
+  return {}
 }
 
 export async function signOut() {
