@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 
+import { getLoginRedirectUrl, isPublicAuthPath } from "@/lib/auth-routes"
 import { publicEnv } from "@/lib/env"
 
 export async function updateSession(request: NextRequest) {
@@ -33,7 +34,13 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  await supabase.auth.getClaims()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
+  if (!user && !isPublicAuthPath(request.nextUrl.pathname)) {
+    return NextResponse.redirect(getLoginRedirectUrl(request.nextUrl))
+  }
 
   return response
 }
