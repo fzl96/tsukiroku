@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test"
 
-import { createTransactionSchema } from "./validations"
+import {
+  createTransactionSchema,
+  listTransactionsFiltersSchema,
+} from "./validations"
 
 const baseInput = {
   accountId: "account_1",
@@ -16,7 +19,7 @@ describe("transaction validation", () => {
         ...baseInput,
         type: "INCOME",
         categoryId: "category_1",
-      }),
+      })
     ).toMatchObject({
       type: "INCOME",
       status: "POSTED",
@@ -31,7 +34,7 @@ describe("transaction validation", () => {
         ...baseInput,
         type: "INCOME",
         transferAccountId: "account_2",
-      }),
+      })
     ).toThrow()
   })
 
@@ -41,7 +44,7 @@ describe("transaction validation", () => {
         ...baseInput,
         type: "TRANSFER",
         transferAccountId: "account_2",
-      }),
+      })
     ).toMatchObject({
       type: "TRANSFER",
       categoryId: null,
@@ -54,7 +57,7 @@ describe("transaction validation", () => {
       createTransactionSchema.parse({
         ...baseInput,
         type: "TRANSFER",
-      }),
+      })
     ).toThrow()
   })
 
@@ -65,7 +68,7 @@ describe("transaction validation", () => {
         type: "TRANSFER",
         transferAccountId: "account_2",
         categoryId: "category_1",
-      }),
+      })
     ).toThrow()
 
     expect(() =>
@@ -74,7 +77,19 @@ describe("transaction validation", () => {
         type: "TRANSFER",
         transferAccountId: "account_2",
         recurringPaymentId: "recurring_1",
-      }),
+      })
     ).toThrow()
+  })
+
+  test("accepts multiple account and category filters", () => {
+    expect(
+      listTransactionsFiltersSchema.parse({
+        accountIds: ["bank", "cash"],
+        categoryIds: ["salary", "groceries"],
+      })
+    ).toEqual({
+      accountIds: ["bank", "cash"],
+      categoryIds: ["salary", "groceries"],
+    })
   })
 })

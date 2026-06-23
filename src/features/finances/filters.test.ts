@@ -1,6 +1,12 @@
 import { describe, expect, test } from "bun:test"
 
-import { getPeriodRange, groupCategoriesByKind, parsePeriod } from "./filters"
+import {
+  getPeriodRange,
+  groupCategoriesByKind,
+  parseFilterIds,
+  parsePeriod,
+  toggleFilterId,
+} from "./filters"
 
 describe("finance filters", () => {
   test("parses unknown periods as all", () => {
@@ -45,5 +51,26 @@ describe("finance filters", () => {
       income: [categories[0], categories[2]],
       expense: [categories[1]],
     })
+  })
+
+  test("parses repeated filter ids", () => {
+    expect(parseFilterIds(undefined)).toEqual([])
+    expect(parseFilterIds("bank")).toEqual(["bank"])
+    expect(parseFilterIds(["bank", "cash", "bank", ""])).toEqual([
+      "bank",
+      "cash",
+    ])
+  })
+
+  test("toggles filter ids without mutating the original list", () => {
+    const selected = ["bank", "cash"]
+
+    expect(toggleFilterId(selected, "credit")).toEqual([
+      "bank",
+      "cash",
+      "credit",
+    ])
+    expect(toggleFilterId(selected, "bank")).toEqual(["cash"])
+    expect(selected).toEqual(["bank", "cash"])
   })
 })

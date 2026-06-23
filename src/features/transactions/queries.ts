@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lte, or } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, lte, or } from "drizzle-orm"
 
 import { db } from "@/db"
 import { transaction } from "@/db/schema"
@@ -15,11 +15,17 @@ function mergeFilters(filters: unknown, override: Record<string, string>) {
   }
 }
 
+function mergeUniqueIds(...idLists: Array<string[] | undefined>) {
+  return [...new Set(idLists.flatMap((ids) => ids ?? []))]
+}
+
 export async function getTransaction(userId: string, transactionId: string) {
   const [row] = await db
     .select()
     .from(transaction)
-    .where(and(eq(transaction.id, transactionId), eq(transaction.userId, userId)))
+    .where(
+      and(eq(transaction.id, transactionId), eq(transaction.userId, userId))
+    )
     .limit(1)
 
   return row ?? null
@@ -37,17 +43,36 @@ export async function listTransactions(userId: string, filters?: unknown) {
     conditions.push(lte(transaction.occurredAt, parsedFilters.to))
   }
 
-  if (parsedFilters?.accountId) {
+  const accountIds = mergeUniqueIds(
+    parsedFilters?.accountId ? [parsedFilters.accountId] : undefined,
+    parsedFilters?.accountIds
+  )
+
+  if (accountIds.length === 1) {
     conditions.push(
       or(
-        eq(transaction.accountId, parsedFilters.accountId),
-        eq(transaction.transferAccountId, parsedFilters.accountId),
-      )!,
+        eq(transaction.accountId, accountIds[0]),
+        eq(transaction.transferAccountId, accountIds[0])
+      )!
+    )
+  } else if (accountIds.length > 1) {
+    conditions.push(
+      or(
+        inArray(transaction.accountId, accountIds),
+        inArray(transaction.transferAccountId, accountIds)
+      )!
     )
   }
 
-  if (parsedFilters?.categoryId) {
-    conditions.push(eq(transaction.categoryId, parsedFilters.categoryId))
+  const categoryIds = mergeUniqueIds(
+    parsedFilters?.categoryId ? [parsedFilters.categoryId] : undefined,
+    parsedFilters?.categoryIds
+  )
+
+  if (categoryIds.length === 1) {
+    conditions.push(eq(transaction.categoryId, categoryIds[0]))
+  } else if (categoryIds.length > 1) {
+    conditions.push(inArray(transaction.categoryId, categoryIds))
   }
 
   if (parsedFilters?.type) {
@@ -68,7 +93,7 @@ export async function listTransactions(userId: string, filters?: unknown) {
 export async function getTransactionsByAccount(
   userId: string,
   accountId: string,
-  filters?: unknown,
+  filters?: unknown
 ) {
   return listTransactions(userId, mergeFilters(filters, { accountId }))
 }
@@ -76,7 +101,7 @@ export async function getTransactionsByAccount(
 export async function getTransactionsByCategory(
   userId: string,
   categoryId: string,
-  filters?: unknown,
+  filters?: unknown
 ) {
   return listTransactions(userId, mergeFilters(filters, { categoryId }))
 }

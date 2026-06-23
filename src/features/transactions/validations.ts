@@ -40,8 +40,8 @@ const transactionInputBaseSchema = z.object({
   recurringPaymentId: nullableIdSchema,
 })
 
-export const createTransactionSchema = transactionInputBaseSchema
-  .superRefine((data, ctx) => {
+export const createTransactionSchema = transactionInputBaseSchema.superRefine(
+  (data, ctx) => {
     if (data.type === "TRANSFER") {
       if (!data.transferAccountId) {
         ctx.addIssue({
@@ -85,20 +85,22 @@ export const createTransactionSchema = transactionInputBaseSchema
         message: "Only transfers can have a destination account",
       })
     }
-  })
-export const updateTransactionSchema = transactionInputBaseSchema.partial().refine(
-  (data) => Object.keys(data).length > 0,
-  {
-    message: "Provide at least one field to update",
-  },
+  }
 )
+export const updateTransactionSchema = transactionInputBaseSchema
+  .partial()
+  .refine((data) => Object.keys(data).length > 0, {
+    message: "Provide at least one field to update",
+  })
 
 export const listTransactionsFiltersSchema = z
   .object({
     from: z.date().optional(),
     to: z.date().optional(),
     accountId: z.string().min(1).optional(),
+    accountIds: z.array(z.string().min(1)).optional(),
     categoryId: z.string().min(1).optional(),
+    categoryIds: z.array(z.string().min(1)).optional(),
     type: transactionTypeSchema.optional(),
     status: transactionStatusSchema.optional(),
   })

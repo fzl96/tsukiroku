@@ -10,6 +10,7 @@ import {
   type FinancePeriod,
   groupCategoriesByKind,
   periodOptions,
+  toggleFilterId,
 } from "@/features/finances/filters"
 import { cn } from "@/lib/utils"
 
@@ -23,8 +24,8 @@ type FinancesPageProps = {
   categories: Category[]
   transactions: Transaction[]
   filters: {
-    accountId?: string
-    categoryId?: string
+    accountIds: string[]
+    categoryIds: string[]
     period: FinancePeriod
   }
 }
@@ -128,28 +129,28 @@ function groupTransactions(transactions: Transaction[]) {
 
 function buildHref(
   filters: FinancesPageProps["filters"],
-  updates: Partial<Record<keyof FinancesPageProps["filters"], string | null>>
+  updates: {
+    accountIds?: string[] | null
+    categoryIds?: string[] | null
+    period?: FinancePeriod | null
+  }
 ) {
   const params = new URLSearchParams()
 
-  if (filters.accountId) {
-    params.set("accountId", filters.accountId)
-  }
+  const accountIds = updates.accountIds ?? filters.accountIds
+  const categoryIds = updates.categoryIds ?? filters.categoryIds
+  const period = updates.period ?? filters.period
 
-  if (filters.categoryId) {
-    params.set("categoryId", filters.categoryId)
-  }
+  accountIds?.forEach((accountId) => {
+    params.append("accountId", accountId)
+  })
 
-  if (filters.period !== "all") {
-    params.set("period", filters.period)
-  }
+  categoryIds?.forEach((categoryId) => {
+    params.append("categoryId", categoryId)
+  })
 
-  for (const [key, value] of Object.entries(updates)) {
-    if (!value || value === "all") {
-      params.delete(key)
-    } else {
-      params.set(key, value)
-    }
+  if (period !== "all") {
+    params.set("period", period)
   }
 
   const query = params.toString()
@@ -228,8 +229,10 @@ function CategoryFilterRow({
       {categories.map((category) => (
         <FilterLink
           key={category.id}
-          href={buildHref(filters, { categoryId: category.id })}
-          active={filters.categoryId === category.id}
+          href={buildHref(filters, {
+            categoryIds: toggleFilterId(filters.categoryIds, category.id),
+          })}
+          active={filters.categoryIds.includes(category.id)}
           fallbackToneClassName="bg-chart-3"
           tone={category.color}
         >
@@ -243,11 +246,11 @@ function CategoryFilterRow({
 function AccountCards({
   accounts,
   balances,
-  selectedAccountId,
+  selectedAccountIds,
 }: {
   accounts: FinancialAccount[]
   balances: FinancesPageProps["accountBalances"]
-  selectedAccountId?: string
+  selectedAccountIds: string[]
 }) {
   const balanceByAccountId = new Map(
     balances.map((balance) => [balance.accountId, balance])
@@ -263,8 +266,8 @@ function AccountCards({
     )
   }
 
-  const visibleAccounts = selectedAccountId
-    ? accounts.filter((account) => account.id === selectedAccountId)
+  const visibleAccounts = selectedAccountIds.length
+    ? accounts.filter((account) => selectedAccountIds.includes(account.id))
     : accounts
 
   return (
@@ -277,7 +280,7 @@ function AccountCards({
             key={account.id}
             className={cn(
               "group relative border border-border p-4 pe-12 transition-colors focus-within:border-foreground hover:border-foreground",
-              selectedAccountId === account.id && "border-primary"
+              selectedAccountIds.includes(account.id) && "border-primary"
             )}
           >
             <AccountCardMenu account={account} />
@@ -329,12 +332,12 @@ export function FinancesPage({
   )
   const categoryById = new Map(categories.map((item) => [item.id, item]))
   const groupedTransactions = groupTransactions(transactions)
-  const activeAccount = filters.accountId
-    ? accountNames.get(filters.accountId)
-    : null
-  const activeCategory = filters.categoryId
-    ? categoryById.get(filters.categoryId)?.name
-    : null
+  const activeAccounts = filters.accountIds
+    .map((accountId) => accountNames.get(accountId))
+    .filter((name): name is string => Boolean(name))
+  const activeCategories = filters.categoryIds
+    .map((categoryId) => categoryById.get(categoryId)?.name)
+    .filter((name): name is string => Boolean(name))
   const groupedCategories = groupCategoriesByKind(categories)
 
   return (
@@ -378,8 +381,8 @@ export function FinancesPage({
               Account
             </p>
             <FilterLink
-              href={buildHref(filters, { accountId: null })}
-              active={!filters.accountId}
+              href={buildHref(filters, { accountIds: [] })}
+              active={!filters.accountIds.length}
               fallbackToneClassName=""
             >
               All
@@ -387,8 +390,10 @@ export function FinancesPage({
             {accounts.map((account) => (
               <FilterLink
                 key={account.id}
-                href={buildHref(filters, { accountId: account.id })}
-                active={filters.accountId === account.id}
+                href={buildHref(filters, {
+                  accountIds: toggleFilterId(filters.accountIds, account.id),
+                })}
+                active={filters.accountIds.includes(account.id)}
                 tone={account.color}
               >
                 {account.name}
@@ -402,8 +407,8 @@ export function FinancesPage({
               Category
             </p>
             <FilterLink
-              href={buildHref(filters, { categoryId: null })}
-              active={!filters.categoryId}
+              href={buildHref(filters, { categoryIds: [] })}
+              active={!filters.categoryIds.length}
               fallbackToneClassName=""
             >
               All
@@ -428,15 +433,17 @@ export function FinancesPage({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
               Showing {periodLabels[filters.period]}
-              {activeAccount ? ` / ${activeAccount}` : ""}
-              {activeCategory ? ` / ${activeCategory}` : ""}
+              {activeAccounts.length ? ` / ${activeAccounts.join(", ")}` : ""}
+              {activeCategories.length
+                ? ` / ${activeCategories.join(", ")}`
+                : ""}
             </p>
             <TransactionActionLink />
           </div>
           <AccountCards
             accounts={accounts}
             balances={accountBalances}
-            selectedAccountId={filters.accountId}
+            selectedAccountIds={filters.accountIds}
           />
         </section>
 

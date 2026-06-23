@@ -23,6 +23,16 @@ export function parsePeriod(
     : "all"
 }
 
+export function parseFilterIds(value: string | string[] | undefined) {
+  const values = Array.isArray(value) ? value : value ? [value] : []
+
+  return [...new Set(values.map((item) => item.trim()).filter(Boolean))]
+}
+
+export function toggleFilterId(ids: readonly string[], id: string) {
+  return ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
+}
+
 function endOfDay(date: Date) {
   return new Date(
     date.getFullYear(),

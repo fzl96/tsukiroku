@@ -2,7 +2,11 @@ import { listFinancialAccounts } from "@/features/accounts/queries"
 import { getAccountBalance } from "@/features/accounts/service"
 import { listCategories } from "@/features/categories/queries"
 import { FinancesPage } from "@/features/finances/components/finances-page"
-import { getPeriodRange, parsePeriod } from "@/features/finances/filters"
+import {
+  getPeriodRange,
+  parseFilterIds,
+  parsePeriod,
+} from "@/features/finances/filters"
 import { listTransactions } from "@/features/transactions/queries"
 import { requireUser } from "@/lib/auth"
 
@@ -11,10 +15,6 @@ type FinancesSearchParams = Promise<{
   categoryId?: string | string[]
   period?: string | string[]
 }>
-
-function getFirstParam(value: string | string[] | undefined) {
-  return Array.isArray(value) ? value[0] : value
-}
 
 export default async function FinancesRoute({
   searchParams,
@@ -25,13 +25,13 @@ export default async function FinancesRoute({
   const query = await searchParams
   const period = parsePeriod(query.period)
   const periodRange = getPeriodRange(period)
-  const accountId = getFirstParam(query.accountId)
-  const categoryId = getFirstParam(query.categoryId)
+  const accountIds = parseFilterIds(query.accountId)
+  const categoryIds = parseFilterIds(query.categoryId)
 
   const transactionFilters = {
     ...(periodRange ?? {}),
-    ...(accountId ? { accountId } : {}),
-    ...(categoryId ? { categoryId } : {}),
+    ...(accountIds.length ? { accountIds } : {}),
+    ...(categoryIds.length ? { categoryIds } : {}),
   }
 
   const [accounts, categories, transactions] = await Promise.all([
@@ -49,7 +49,7 @@ export default async function FinancesRoute({
       accountBalances={accountBalances}
       categories={categories}
       transactions={transactions}
-      filters={{ accountId, categoryId, period }}
+      filters={{ accountIds, categoryIds, period }}
     />
   )
 }
