@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useForm } from "react-hook-form"
+import * as React from "react"
+import { useRouter } from "next/navigation"
+import { useForm, useWatch } from "react-hook-form"
 
 import type { Category, FinancialAccount } from "@/db/schema"
 import { Button } from "@/components/ui/button"
@@ -21,6 +23,7 @@ import {
 } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
 import { AccountSelectWithBalance } from "@/features/finances/components/account-select-with-balance"
+import { createTransactionAction } from "@/features/transactions/actions"
 
 type NewTransactionPageProps = {
   accountBalances: Array<{
@@ -35,6 +38,8 @@ type NewTransactionPageProps = {
 type NewTransactionFormValues = {
   type: "EXPENSE" | "INCOME" | "TRANSFER"
   accountId: string
+  transferAccountId: string
+  title: string
   categoryId: string
   amount: string
   currency: string
@@ -66,6 +71,7 @@ export function NewTransactionPage({
   accounts,
   categories,
 }: NewTransactionPageProps) {
+  const router = useRouter()
   const now = new Date()
   const incomeCategories = categories.filter(
     (category) => category.kind === "INCOME"
@@ -78,6 +84,8 @@ export function NewTransactionPage({
     defaultValues: {
       type: "EXPENSE",
       accountId: accounts[0]?.id ?? "",
+      transferAccountId: "",
+      title: "",
       categoryId: "",
       amount: "",
       currency: defaultCurrency,
@@ -89,10 +97,66 @@ export function NewTransactionPage({
       note: "",
     },
   })
+  const transactionType =
+    useWatch({ control: form.control, name: "type" }) ?? "EXPENSE"
+  const selectedAccountId =
+    useWatch({ control: form.control, name: "accountId" }) ?? ""
+  const transferAccounts = accounts.filter(
+    (account) => account.id !== selectedAccountId
+  )
+  const compatibleCategories =
+    transactionType === "INCOME" ? incomeCategories : expenseCategories
+  const [error, setError] = React.useState<string | null>(null)
+  const [isPending, startTransition] = React.useTransition()
+
+  React.useEffect(() => {
+    form.setValue("categoryId", "")
+
+    if (transactionType === "TRANSFER") {
+      return
+    }
+
+    form.setValue("transferAccountId", "")
+  }, [form, transactionType])
+
+  React.useEffect(() => {
+    if (form.getValues("transferAccountId") === selectedAccountId) {
+      form.setValue("transferAccountId", "")
+    }
+  }, [form, selectedAccountId])
 
   function handleSubmit(values: NewTransactionFormValues) {
-    void values
-    // Transaction creation is intentionally deferred until the mutation UI is built.
+    const occurredAt = new Date(
+      `${values.occurredDate}T${values.occurredTime || "00:00"}:00`
+    )
+
+    startTransition(async () => {
+      const result = await createTransactionAction({
+        accountId: values.accountId,
+        transferAccountId:
+          values.type === "TRANSFER" ? values.transferAccountId : null,
+        title: values.title.trim(),
+        type: values.type,
+        status: values.status,
+        amount: values.amount.trim(),
+        currency: values.currency.trim().toUpperCase(),
+        occurredAt,
+        merchant: values.merchant.trim() || null,
+        note: values.note.trim() || null,
+        reference: values.reference.trim() || null,
+        categoryId:
+          values.type === "TRANSFER" ? null : values.categoryId || null,
+        recurringPaymentId: null,
+      })
+
+      if (result.error) {
+        setError(result.error.message)
+        return
+      }
+
+      router.push("/finances")
+      router.refresh()
+    })
   }
 
   return (
@@ -160,7 +224,9 @@ export function NewTransactionPage({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className={formLabelClassName}>
-                      Account (required)
+                      {transactionType === "TRANSFER"
+                        ? "Transfer from (required)"
+                        : "Account (required)"}
                     </FormLabel>
                     <FormControl>
                       <AccountSelectWithBalance
@@ -178,48 +244,96 @@ export function NewTransactionPage({
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="categoryId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className={formLabelClassName}>
-                      Category
-                    </FormLabel>
-                    <FormControl>
-                      <NativeSelect className={selectClassName()} {...field}>
-                        <NativeSelectOption value="">(none)</NativeSelectOption>
-                        {expenseCategories.length ? (
-                          <NativeSelectOptGroup label="Expense">
-                            {expenseCategories.map((category) => (
-                              <NativeSelectOption
-                                key={category.id}
-                                value={category.id}
-                              >
-                                {category.name}
-                              </NativeSelectOption>
-                            ))}
-                          </NativeSelectOptGroup>
-                        ) : null}
-                        {incomeCategories.length ? (
-                          <NativeSelectOptGroup label="Income">
-                            {incomeCategories.map((category) => (
-                              <NativeSelectOption
-                                key={category.id}
-                                value={category.id}
-                              >
-                                {category.name}
-                              </NativeSelectOption>
-                            ))}
-                          </NativeSelectOptGroup>
-                        ) : null}
-                      </NativeSelect>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {transactionType === "TRANSFER" ? (
+                <FormField
+                  control={form.control}
+                  name="transferAccountId"
+                  rules={{ required: "Transfer destination is required." }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={formLabelClassName}>
+                        Transfer to (required)
+                      </FormLabel>
+                      <FormControl>
+                        <NativeSelect className={selectClassName()} {...field}>
+                          <NativeSelectOption value="">
+                            Select account
+                          </NativeSelectOption>
+                          {transferAccounts.map((account) => (
+                            <NativeSelectOption
+                              key={account.id}
+                              value={account.id}
+                            >
+                              {account.name}
+                            </NativeSelectOption>
+                          ))}
+                        </NativeSelect>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              ) : (
+                <FormField
+                  control={form.control}
+                  name="categoryId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className={formLabelClassName}>
+                        Category
+                      </FormLabel>
+                      <FormControl>
+                        <NativeSelect className={selectClassName()} {...field}>
+                          <NativeSelectOption value="">
+                            (none)
+                          </NativeSelectOption>
+                          {compatibleCategories.length ? (
+                            <NativeSelectOptGroup
+                              label={
+                                transactionType === "INCOME"
+                                  ? "Income"
+                                  : "Expense"
+                              }
+                            >
+                              {compatibleCategories.map((category) => (
+                                <NativeSelectOption
+                                  key={category.id}
+                                  value={category.id}
+                                >
+                                  {category.name}
+                                </NativeSelectOption>
+                              ))}
+                            </NativeSelectOptGroup>
+                          ) : null}
+                        </NativeSelect>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
             </div>
+
+            <FormField
+              control={form.control}
+              name="title"
+              rules={{ required: "Title is required." }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className={formLabelClassName}>
+                    Title (required)
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      className="h-12 text-base"
+                      placeholder="Coffee, salary, rent, transfer..."
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="grid gap-5 md:grid-cols-2">
               <FormField
@@ -377,12 +491,15 @@ export function NewTransactionPage({
               )}
             />
 
+            {error ? <p className="text-sm text-destructive">{error}</p> : null}
+
             <Button
               type="submit"
               size="lg"
               className="mt-2 font-mono uppercase"
+              disabled={isPending}
             >
-              Save
+              {isPending ? "Saving..." : "Save"}
             </Button>
           </form>
         </Form>

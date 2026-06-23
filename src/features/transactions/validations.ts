@@ -25,6 +25,7 @@ const nullableTextSchema = z
 const transactionInputBaseSchema = z.object({
   accountId: z.string().trim().min(1),
   transferAccountId: nullableIdSchema,
+  title: z.string().trim().min(1).max(160),
   type: transactionTypeSchema,
   status: transactionStatusSchema.default("POSTED"),
   amount: z.string().transform((value) => assertPositiveMoney(value)),

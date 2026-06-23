@@ -194,6 +194,7 @@ export const transaction = pgTable(
     userId: userId(),
     accountId: text("account_id").notNull(),
     transferAccountId: text("transfer_account_id"),
+    title: text("title"),
     type: transactionTypeEnum("type").notNull(),
     status: transactionStatusEnum("status").notNull().default("POSTED"),
     amount: money("amount").notNull(),

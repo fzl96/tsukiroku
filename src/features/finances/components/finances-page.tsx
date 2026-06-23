@@ -78,6 +78,10 @@ function getTransactionTitle(
   transaction: Transaction,
   accounts: Map<string, string>
 ) {
+  if (transaction.title) {
+    return transaction.title
+  }
+
   if (transaction.merchant) {
     return transaction.merchant
   }

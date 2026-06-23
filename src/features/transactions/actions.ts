@@ -11,11 +11,17 @@ import {
 import { actionData, actionError } from "@/lib/action-result"
 import { requireUser } from "@/lib/auth"
 
+function revalidateTransactionViews() {
+  revalidatePath("/dashboard")
+  revalidatePath("/finances")
+  revalidatePath("/finances/transaction/new")
+}
+
 export async function createTransactionAction(input: unknown) {
   try {
     const user = await requireUser()
     const transaction = await createTransaction(user.id, input)
-    revalidatePath("/dashboard")
+    revalidateTransactionViews()
     return actionData(transaction)
   } catch (error) {
     return actionError(error)
@@ -24,12 +30,12 @@ export async function createTransactionAction(input: unknown) {
 
 export async function updateTransactionAction(
   transactionId: string,
-  input: unknown,
+  input: unknown
 ) {
   try {
     const user = await requireUser()
     const transaction = await updateTransaction(user.id, transactionId, input)
-    revalidatePath("/dashboard")
+    revalidateTransactionViews()
     return actionData(transaction)
   } catch (error) {
     return actionError(error)
@@ -40,7 +46,7 @@ export async function deleteTransactionAction(transactionId: string) {
   try {
     const user = await requireUser()
     await deleteTransaction(user.id, transactionId)
-    revalidatePath("/dashboard")
+    revalidateTransactionViews()
     return actionData({ success: true })
   } catch (error) {
     return actionError(error)
@@ -51,7 +57,7 @@ export async function voidTransactionAction(transactionId: string) {
   try {
     const user = await requireUser()
     const transaction = await voidTransaction(user.id, transactionId)
-    revalidatePath("/dashboard")
+    revalidateTransactionViews()
     return actionData(transaction)
   } catch (error) {
     return actionError(error)

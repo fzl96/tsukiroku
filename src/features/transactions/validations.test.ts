@@ -10,6 +10,7 @@ const baseInput = {
   amount: "12.5",
   currency: "IDR",
   occurredAt: new Date("2026-07-01T00:00:00.000Z"),
+  title: "Coffee",
 }
 
 describe("transaction validation", () => {
@@ -26,6 +27,28 @@ describe("transaction validation", () => {
       amount: "12.50",
       transferAccountId: null,
     })
+  })
+
+  test("trims the transaction title", () => {
+    expect(
+      createTransactionSchema.parse({
+        ...baseInput,
+        title: "  Salary  ",
+        type: "INCOME",
+      })
+    ).toMatchObject({
+      title: "Salary",
+    })
+  })
+
+  test("rejects blank transaction titles", () => {
+    expect(() =>
+      createTransactionSchema.parse({
+        ...baseInput,
+        title: " ",
+        type: "EXPENSE",
+      })
+    ).toThrow()
   })
 
   test("rejects income transactions with transfer account", () => {

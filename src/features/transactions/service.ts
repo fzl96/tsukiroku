@@ -18,7 +18,7 @@ import { appError, notFound } from "@/lib/errors"
 
 async function getRecurringPaymentForUser(
   userId: string,
-  recurringPaymentId: string,
+  recurringPaymentId: string
 ) {
   const [row] = await db
     .select()
@@ -26,8 +26,8 @@ async function getRecurringPaymentForUser(
     .where(
       and(
         eq(recurringPayment.id, recurringPaymentId),
-        eq(recurringPayment.userId, userId),
-      ),
+        eq(recurringPayment.userId, userId)
+      )
     )
     .limit(1)
 
@@ -36,7 +36,7 @@ async function getRecurringPaymentForUser(
 
 async function assertTransactionResources(
   userId: string,
-  data: CreateTransactionInput,
+  data: CreateTransactionInput
 ) {
   const account = await getFinancialAccount(userId, data.accountId)
 
@@ -51,7 +51,7 @@ async function assertTransactionResources(
   if (data.transferAccountId) {
     const transferAccount = await getFinancialAccount(
       userId,
-      data.transferAccountId,
+      data.transferAccountId
     )
 
     if (!transferAccount) {
@@ -77,7 +77,7 @@ async function assertTransactionResources(
     if (category.kind !== data.type) {
       throw appError(
         "INVALID_CATEGORY_KIND",
-        "Category kind must match transaction type.",
+        "Category kind must match transaction type."
       )
     }
   }
@@ -85,7 +85,7 @@ async function assertTransactionResources(
   if (data.recurringPaymentId) {
     const recurring = await getRecurringPaymentForUser(
       userId,
-      data.recurringPaymentId,
+      data.recurringPaymentId
     )
 
     if (!recurring) {
@@ -112,7 +112,7 @@ export async function createTransaction(userId: string, input: unknown) {
 export async function updateTransaction(
   userId: string,
   transactionId: string,
-  input: unknown,
+  input: unknown
 ) {
   const existing = await getTransaction(userId, transactionId)
 
@@ -125,6 +125,12 @@ export async function updateTransaction(
     accountId: partial.accountId ?? existing.accountId,
     transferAccountId:
       partial.transferAccountId ?? existing.transferAccountId ?? null,
+    title:
+      partial.title ??
+      existing.title ??
+      existing.merchant ??
+      existing.note ??
+      "Untitled transaction",
     type: partial.type ?? existing.type,
     status: partial.status ?? existing.status,
     amount: partial.amount ?? existing.amount,
@@ -134,7 +140,8 @@ export async function updateTransaction(
     note: partial.note ?? existing.note,
     reference: partial.reference ?? existing.reference,
     categoryId: partial.categoryId ?? existing.categoryId,
-    recurringPaymentId: partial.recurringPaymentId ?? existing.recurringPaymentId,
+    recurringPaymentId:
+      partial.recurringPaymentId ?? existing.recurringPaymentId,
   })
 
   await assertTransactionResources(userId, candidate)
@@ -142,7 +149,9 @@ export async function updateTransaction(
   const [updated] = await db
     .update(transaction)
     .set(candidate)
-    .where(and(eq(transaction.id, transactionId), eq(transaction.userId, userId)))
+    .where(
+      and(eq(transaction.id, transactionId), eq(transaction.userId, userId))
+    )
     .returning()
 
   return updated
@@ -157,7 +166,9 @@ export async function deleteTransaction(userId: string, transactionId: string) {
 
   await db
     .delete(transaction)
-    .where(and(eq(transaction.id, transactionId), eq(transaction.userId, userId)))
+    .where(
+      and(eq(transaction.id, transactionId), eq(transaction.userId, userId))
+    )
 }
 
 export async function voidTransaction(userId: string, transactionId: string) {
@@ -170,7 +181,9 @@ export async function voidTransaction(userId: string, transactionId: string) {
   const [updated] = await db
     .update(transaction)
     .set({ status: "VOID" })
-    .where(and(eq(transaction.id, transactionId), eq(transaction.userId, userId)))
+    .where(
+      and(eq(transaction.id, transactionId), eq(transaction.userId, userId))
+    )
     .returning()
 
   return updated
@@ -178,12 +191,14 @@ export async function voidTransaction(userId: string, transactionId: string) {
 
 export async function getCategoryForTransactionValidation(
   userId: string,
-  categoryId: string,
+  categoryId: string
 ) {
   const [row] = await db
     .select()
     .from(categoryTable)
-    .where(and(eq(categoryTable.id, categoryId), eq(categoryTable.userId, userId)))
+    .where(
+      and(eq(categoryTable.id, categoryId), eq(categoryTable.userId, userId))
+    )
     .limit(1)
 
   return row ?? null
