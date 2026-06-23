@@ -754,7 +754,7 @@ Agents must not:
 When adding a new page:
 
 1. Create the route in `src/app`.
-2. Put feature-specific UI in `src/features/[feature]/components`.
+2. Put feature-specific UI in `src/components/[feature]`.
 3. Put reads in `src/features/[feature]/queries.ts`.
 4. Put mutations in `src/features/[feature]/actions.ts`.
 5. Put validation in `src/features/[feature]/validations.ts`.
