@@ -323,3 +323,18 @@ export const recurringPaymentRelations = relations(
     transactions: many(transaction),
   }),
 )
+
+export type UserFinanceSettings = typeof userFinanceSettings.$inferSelect
+export type NewUserFinanceSettings = typeof userFinanceSettings.$inferInsert
+
+export type FinancialAccount = typeof financialAccount.$inferSelect
+export type NewFinancialAccount = typeof financialAccount.$inferInsert
+
+export type Category = typeof category.$inferSelect
+export type NewCategory = typeof category.$inferInsert
+
+export type Transaction = typeof transaction.$inferSelect
+export type NewTransaction = typeof transaction.$inferInsert
+
+export type RecurringPayment = typeof recurringPayment.$inferSelect
+export type NewRecurringPayment = typeof recurringPayment.$inferInsert
