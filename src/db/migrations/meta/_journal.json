@@ -15,6 +15,13 @@
       "when": 1782165820626,
       "tag": "0001_flawless_komodo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782231140330,
+      "tag": "0002_hesitant_rictor",
+      "breakpoints": true
     }
   ]
 }

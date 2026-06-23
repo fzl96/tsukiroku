@@ -1,6 +1,10 @@
 import Link from "next/link"
 
 import type { Category, FinancialAccount, Transaction } from "@/db/schema"
+import {
+  AccountCardMenu,
+  NewAccountButton,
+} from "@/features/finances/components/account-management"
 import { type FinancePeriod, periodOptions } from "@/features/finances/filters"
 import { cn } from "@/lib/utils"
 
@@ -187,7 +191,7 @@ function FilterLink({
   )
 }
 
-function FilterAction({ children }: { children: React.ReactNode }) {
+function CategoryAction({ children }: { children: React.ReactNode }) {
   return (
     <button
       type="button"
@@ -245,12 +249,27 @@ function AccountCards({
           <article
             key={account.id}
             className={cn(
-              "border border-border p-4 transition-colors",
+              "group relative border border-border p-4 pe-12 transition-colors hover:border-foreground focus-within:border-foreground",
               selectedAccountId === account.id && "border-primary"
             )}
           >
+            <AccountCardMenu account={account} />
             <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
-              {account.type.replaceAll("_", " ")}
+              <span className="inline-flex items-center gap-2">
+                {account.color ? (
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: account.color }}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span
+                    className="size-2 rounded-full bg-chart-2"
+                    aria-hidden="true"
+                  />
+                )}
+                {account.type.replaceAll("_", " ")}
+              </span>
             </p>
             <h2 className="mt-3 text-xl leading-6">{account.name}</h2>
             <p className="mt-5 font-heading text-3xl leading-none tracking-tight">
@@ -342,11 +361,12 @@ export function FinancesPage({
                 key={account.id}
                 href={buildHref(filters, { accountId: account.id })}
                 active={filters.accountId === account.id}
+                tone={account.color}
               >
                 {account.name}
               </FilterLink>
             ))}
-            <FilterAction>+ New Account</FilterAction>
+            <NewAccountButton />
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -371,7 +391,7 @@ export function FinancesPage({
                 {category.name}
               </FilterLink>
             ))}
-            <FilterAction>+ New Category</FilterAction>
+            <CategoryAction>+ New Category</CategoryAction>
           </div>
         </section>
 

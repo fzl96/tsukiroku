@@ -65,10 +65,12 @@ export const transactionStatusEnum = pgEnum("transaction_status", [
   "VOID",
 ])
 
-export const recurringPaymentStatusEnum = pgEnum(
-  "recurring_payment_status",
-  ["ACTIVE", "PAUSED", "CANCELED", "ENDED"],
-)
+export const recurringPaymentStatusEnum = pgEnum("recurring_payment_status", [
+  "ACTIVE",
+  "PAUSED",
+  "CANCELED",
+  "ENDED",
+])
 
 export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
   "DAILY",
@@ -77,18 +79,15 @@ export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
   "YEARLY",
 ])
 
-export const userFinanceSettings = pgTable(
-  "user_finance_settings",
-  {
-    id: id(),
-    userId: userId().unique(),
-    baseCurrency: text("base_currency").notNull(),
-    weekStartsOn: integer("week_starts_on").notNull().default(1),
-    monthStartDay: integer("month_start_day").notNull().default(1),
-    createdAt: createdAt(),
-    updatedAt: updatedAt(),
-  },
-)
+export const userFinanceSettings = pgTable("user_finance_settings", {
+  id: id(),
+  userId: userId().unique(),
+  baseCurrency: text("base_currency").notNull(),
+  weekStartsOn: integer("week_starts_on").notNull().default(1),
+  monthStartDay: integer("month_start_day").notNull().default(1),
+  createdAt: createdAt(),
+  updatedAt: updatedAt(),
+})
 
 export const financialAccount = pgTable(
   "financial_account",
@@ -98,6 +97,7 @@ export const financialAccount = pgTable(
     name: text("name").notNull(),
     type: financialAccountTypeEnum("type").notNull(),
     currency: text("currency").notNull(),
+    color: text("color"),
     initialBalance: money("initial_balance").notNull().default("0"),
     isArchived: boolean("is_archived").notNull().default(false),
     displayOrder: integer("display_order").notNull().default(0),
@@ -107,13 +107,13 @@ export const financialAccount = pgTable(
   (table) => [
     unique("financial_account_user_id_name_unique").on(
       table.userId,
-      table.name,
+      table.name
     ),
     index("financial_account_user_id_display_order_idx").on(
       table.userId,
-      table.displayOrder,
+      table.displayOrder
     ),
-  ],
+  ]
 )
 
 export const category = pgTable(
@@ -133,9 +133,9 @@ export const category = pgTable(
     unique("category_user_id_kind_name_unique").on(
       table.userId,
       table.kind,
-      table.name,
+      table.name
     ),
-  ],
+  ]
 )
 
 export const recurringPayment = pgTable(
@@ -174,14 +174,17 @@ export const recurringPayment = pgTable(
     }).onDelete("set null"),
     index("recurring_payment_user_id_next_due_date_idx").on(
       table.userId,
-      table.nextDueDate,
+      table.nextDueDate
     ),
-    index("recurring_payment_user_id_status_idx").on(table.userId, table.status),
+    index("recurring_payment_user_id_status_idx").on(
+      table.userId,
+      table.status
+    ),
     index("recurring_payment_account_id_status_idx").on(
       table.accountId,
-      table.status,
+      table.status
     ),
-  ],
+  ]
 )
 
 export const transaction = pgTable(
@@ -227,21 +230,21 @@ export const transaction = pgTable(
     }).onDelete("set null"),
     index("transaction_user_id_occurred_at_idx").on(
       table.userId,
-      table.occurredAt,
+      table.occurredAt
     ),
     index("transaction_account_id_occurred_at_idx").on(
       table.accountId,
-      table.occurredAt,
+      table.occurredAt
     ),
     index("transaction_category_id_occurred_at_idx").on(
       table.categoryId,
-      table.occurredAt,
+      table.occurredAt
     ),
     index("transaction_recurring_payment_id_occurred_at_idx").on(
       table.recurringPaymentId,
-      table.occurredAt,
+      table.occurredAt
     ),
-  ],
+  ]
 )
 
 export const userFinanceSettingsRelations = relations(
@@ -251,7 +254,7 @@ export const userFinanceSettingsRelations = relations(
       fields: [userFinanceSettings.userId],
       references: [authUsers.id],
     }),
-  }),
+  })
 )
 
 export const financialAccountRelations = relations(
@@ -268,7 +271,7 @@ export const financialAccountRelations = relations(
       relationName: "transaction_transfer_account",
     }),
     recurringPayments: many(recurringPayment),
-  }),
+  })
 )
 
 export const categoryRelations = relations(category, ({ many, one }) => ({
@@ -321,7 +324,7 @@ export const recurringPaymentRelations = relations(
       references: [category.id],
     }),
     transactions: many(transaction),
-  }),
+  })
 )
 
 export type UserFinanceSettings = typeof userFinanceSettings.$inferSelect

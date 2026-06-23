@@ -16,16 +16,13 @@ export const currencyCodeSchema = z
   .trim()
   .regex(/^[A-Z]{3}$/, "Currency must be a three-letter ISO code")
 
-const optionalTextSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .optional()
+const optionalTextSchema = z.string().trim().min(1).optional()
 
 export const createFinancialAccountSchema = z.object({
   name: z.string().trim().min(1).max(120),
   type: financialAccountTypeSchema,
   currency: currencyCodeSchema,
+  color: z.string().trim().min(1).max(40).optional(),
   initialBalance: z
     .string()
     .default("0")
@@ -38,6 +35,7 @@ export const updateFinancialAccountSchema = z
     name: optionalTextSchema,
     type: financialAccountTypeSchema.optional(),
     currency: currencyCodeSchema.optional(),
+    color: z.string().trim().min(1).max(40).nullable().optional(),
     initialBalance: z
       .string()
       .transform((value) => assertNonNegativeMoney(value))

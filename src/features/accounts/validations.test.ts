@@ -10,12 +10,14 @@ describe("account validation", () => {
         type: "CASH",
         currency: "IDR",
         initialBalance: "1000.5",
-      }),
+        color: "#f97316",
+      })
     ).toEqual({
       name: "Cash",
       type: "CASH",
       currency: "IDR",
       initialBalance: "1000.50",
+      color: "#f97316",
     })
   })
 
@@ -26,7 +28,7 @@ describe("account validation", () => {
         type: "CASH",
         currency: "IDR",
         initialBalance: "-1",
-      }),
+      })
     ).toThrow()
   })
 })
