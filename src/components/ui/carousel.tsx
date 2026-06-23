@@ -95,11 +95,12 @@ function Carousel({
 
   React.useEffect(() => {
     if (!api) return
-    onSelect(api)
+    queueMicrotask(() => onSelect(api))
     api.on("reInit", onSelect)
     api.on("select", onSelect)
 
     return () => {
+      api?.off("reInit", onSelect)
       api?.off("select", onSelect)
     }
   }, [api, onSelect])
@@ -188,7 +189,7 @@ function CarouselPrevious({
         "absolute touch-manipulation",
         orientation === "horizontal"
           ? "inset-y-0 -start-12 my-auto"
-          : "-top-12 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 rotate-90",
+          : "start-1/2 -top-12 -translate-x-1/2 rotate-90 rtl:translate-x-1/2",
         className
       )}
       disabled={!canScrollPrev}
@@ -218,7 +219,7 @@ function CarouselNext({
         "absolute touch-manipulation",
         orientation === "horizontal"
           ? "inset-y-0 -end-12 my-auto"
-          : "-bottom-12 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 rotate-90",
+          : "start-1/2 -bottom-12 -translate-x-1/2 rotate-90 rtl:translate-x-1/2",
         className
       )}
       disabled={!canScrollNext}
