@@ -1,4 +1,5 @@
 import { listFinancialAccounts } from "@/features/accounts/queries"
+import { getAccountBalance } from "@/features/accounts/service"
 import { listCategories } from "@/features/categories/queries"
 import { FinancesPage } from "@/features/finances/components/finances-page"
 import { getPeriodRange, parsePeriod } from "@/features/finances/filters"
@@ -38,10 +39,14 @@ export default async function FinancesRoute({
     listCategories(user.id),
     listTransactions(user.id, transactionFilters),
   ])
+  const accountBalances = await Promise.all(
+    accounts.map((account) => getAccountBalance(user.id, account.id))
+  )
 
   return (
     <FinancesPage
       accounts={accounts}
+      accountBalances={accountBalances}
       categories={categories}
       transactions={transactions}
       filters={{ accountId, categoryId, period }}

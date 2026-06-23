@@ -6,6 +6,11 @@ import { cn } from "@/lib/utils"
 
 type FinancesPageProps = {
   accounts: FinancialAccount[]
+  accountBalances: Array<{
+    accountId: string
+    amount: string
+    currency: string
+  }>
   categories: Category[]
   transactions: Transaction[]
   filters: {
@@ -182,7 +187,92 @@ function FilterLink({
   )
 }
 
+function FilterAction({ children }: { children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      className="inline-flex h-8 items-center border border-transparent px-3 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground"
+    >
+      {children}
+    </button>
+  )
+}
+
+function TransactionActionLink() {
+  return (
+    <Link
+      href="/finances/transaction/new"
+      className="inline-flex h-8 items-center border border-transparent px-3 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground"
+    >
+      + New Transaction
+    </Link>
+  )
+}
+
+function AccountCards({
+  accounts,
+  balances,
+  selectedAccountId,
+}: {
+  accounts: FinancialAccount[]
+  balances: FinancesPageProps["accountBalances"]
+  selectedAccountId?: string
+}) {
+  const balanceByAccountId = new Map(
+    balances.map((balance) => [balance.accountId, balance])
+  )
+
+  if (!accounts.length) {
+    return (
+      <div className="border border-dashed border-border p-4">
+        <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+          No accounts yet
+        </p>
+      </div>
+    )
+  }
+
+  const visibleAccounts = selectedAccountId
+    ? accounts.filter((account) => account.id === selectedAccountId)
+    : accounts
+
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      {visibleAccounts.map((account) => {
+        const balance = balanceByAccountId.get(account.id)
+
+        return (
+          <article
+            key={account.id}
+            className={cn(
+              "border border-border p-4 transition-colors",
+              selectedAccountId === account.id && "border-primary"
+            )}
+          >
+            <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+              {account.type.replaceAll("_", " ")}
+            </p>
+            <h2 className="mt-3 text-xl leading-6">{account.name}</h2>
+            <p className="mt-5 font-heading text-3xl leading-none tracking-tight">
+              {formatCurrency(
+                balance?.amount ?? account.initialBalance,
+                balance?.currency ?? account.currency,
+                "INCOME"
+              )}
+            </p>
+            <div className="mt-4 flex items-center justify-between gap-4 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
+              <span>{account.currency}</span>
+              <span>{account.isArchived ? "Archived" : "Active"}</span>
+            </div>
+          </article>
+        )
+      })}
+    </div>
+  )
+}
+
 export function FinancesPage({
+  accountBalances,
   accounts,
   categories,
   transactions,
@@ -256,6 +346,7 @@ export function FinancesPage({
                 {account.name}
               </FilterLink>
             ))}
+            <FilterAction>+ New Account</FilterAction>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
@@ -280,15 +371,24 @@ export function FinancesPage({
                 {category.name}
               </FilterLink>
             ))}
+            <FilterAction>+ New Category</FilterAction>
           </div>
         </section>
 
-        <section className="border-b border-border py-6">
-          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-            Showing {periodLabels[filters.period]}
-            {activeAccount ? ` / ${activeAccount}` : ""}
-            {activeCategory ? ` / ${activeCategory}` : ""}
-          </p>
+        <section className="space-y-6 border-b border-border py-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+              Showing {periodLabels[filters.period]}
+              {activeAccount ? ` / ${activeAccount}` : ""}
+              {activeCategory ? ` / ${activeCategory}` : ""}
+            </p>
+            <TransactionActionLink />
+          </div>
+          <AccountCards
+            accounts={accounts}
+            balances={accountBalances}
+            selectedAccountId={filters.accountId}
+          />
         </section>
 
         <section className="py-6">
