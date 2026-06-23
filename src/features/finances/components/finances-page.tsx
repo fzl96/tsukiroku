@@ -8,9 +8,11 @@ import {
 import { NewCategoryButton } from "@/features/finances/components/category-management"
 import {
   type FinancePeriod,
+  type FinanceTransactionTypeFilter,
   groupCategoriesByKind,
   periodOptions,
   toggleFilterId,
+  transactionTypeFilterOptions,
 } from "@/features/finances/filters"
 import { cn } from "@/lib/utils"
 
@@ -27,6 +29,7 @@ type FinancesPageProps = {
     accountIds: string[]
     categoryIds: string[]
     period: FinancePeriod
+    type: FinanceTransactionTypeFilter
   }
 }
 
@@ -35,6 +38,13 @@ const periodLabels: Record<FinancePeriod, string> = {
   week: "Week",
   month: "Month",
   year: "Year",
+}
+
+const typeLabels: Record<FinanceTransactionTypeFilter, string> = {
+  all: "All",
+  INCOME: "Income",
+  EXPENSE: "Expense",
+  TRANSFER: "Transfer",
 }
 
 function formatCurrency(
@@ -133,6 +143,7 @@ function buildHref(
     accountIds?: string[] | null
     categoryIds?: string[] | null
     period?: FinancePeriod | null
+    type?: FinanceTransactionTypeFilter | null
   }
 ) {
   const params = new URLSearchParams()
@@ -140,6 +151,7 @@ function buildHref(
   const accountIds = updates.accountIds ?? filters.accountIds
   const categoryIds = updates.categoryIds ?? filters.categoryIds
   const period = updates.period ?? filters.period
+  const type = updates.type ?? filters.type
 
   accountIds?.forEach((accountId) => {
     params.append("accountId", accountId)
@@ -151,6 +163,10 @@ function buildHref(
 
   if (period !== "all") {
     params.set("period", period)
+  }
+
+  if (type !== "all") {
+    params.set("type", type)
   }
 
   const query = params.toString()
@@ -404,6 +420,22 @@ export function FinancesPage({
 
           <div className="flex flex-wrap items-center gap-2">
             <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+              Type
+            </p>
+            {transactionTypeFilterOptions.map((type) => (
+              <FilterLink
+                key={type}
+                href={buildHref(filters, { type })}
+                active={filters.type === type}
+                fallbackToneClassName=""
+              >
+                {typeLabels[type]}
+              </FilterLink>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
               Category
             </p>
             <FilterLink
@@ -433,6 +465,7 @@ export function FinancesPage({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
               Showing {periodLabels[filters.period]}
+              {filters.type !== "all" ? ` / ${typeLabels[filters.type]}` : ""}
               {activeAccounts.length ? ` / ${activeAccounts.join(", ")}` : ""}
               {activeCategories.length
                 ? ` / ${activeCategories.join(", ")}`

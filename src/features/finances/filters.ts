@@ -1,6 +1,14 @@
 export const periodOptions = ["all", "week", "month", "year"] as const
+export const transactionTypeFilterOptions = [
+  "all",
+  "INCOME",
+  "EXPENSE",
+  "TRANSFER",
+] as const
 
 export type FinancePeriod = (typeof periodOptions)[number]
+export type FinanceTransactionTypeFilter =
+  (typeof transactionTypeFilterOptions)[number]
 
 export type PeriodRange = {
   from: Date
@@ -20,6 +28,20 @@ export function parsePeriod(
 
   return periodOptions.includes(value as FinancePeriod)
     ? (value as FinancePeriod)
+    : "all"
+}
+
+export function parseTransactionTypeFilter(
+  value: string | string[] | undefined
+): FinanceTransactionTypeFilter {
+  if (typeof value !== "string") {
+    return "all"
+  }
+
+  return transactionTypeFilterOptions.includes(
+    value as FinanceTransactionTypeFilter
+  )
+    ? (value as FinanceTransactionTypeFilter)
     : "all"
 }
 

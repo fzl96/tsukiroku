@@ -6,6 +6,7 @@ import {
   getPeriodRange,
   parseFilterIds,
   parsePeriod,
+  parseTransactionTypeFilter,
 } from "@/features/finances/filters"
 import { listTransactions } from "@/features/transactions/queries"
 import { requireUser } from "@/lib/auth"
@@ -14,6 +15,7 @@ type FinancesSearchParams = Promise<{
   accountId?: string | string[]
   categoryId?: string | string[]
   period?: string | string[]
+  type?: string | string[]
 }>
 
 export default async function FinancesRoute({
@@ -24,6 +26,7 @@ export default async function FinancesRoute({
   const user = await requireUser()
   const query = await searchParams
   const period = parsePeriod(query.period)
+  const type = parseTransactionTypeFilter(query.type)
   const periodRange = getPeriodRange(period)
   const accountIds = parseFilterIds(query.accountId)
   const categoryIds = parseFilterIds(query.categoryId)
@@ -32,6 +35,7 @@ export default async function FinancesRoute({
     ...(periodRange ?? {}),
     ...(accountIds.length ? { accountIds } : {}),
     ...(categoryIds.length ? { categoryIds } : {}),
+    ...(type !== "all" ? { type } : {}),
   }
 
   const [accounts, categories, transactions] = await Promise.all([
@@ -49,7 +53,7 @@ export default async function FinancesRoute({
       accountBalances={accountBalances}
       categories={categories}
       transactions={transactions}
-      filters={{ accountIds, categoryIds, period }}
+      filters={{ accountIds, categoryIds, period, type }}
     />
   )
 }

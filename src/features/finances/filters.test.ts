@@ -5,6 +5,7 @@ import {
   groupCategoriesByKind,
   parseFilterIds,
   parsePeriod,
+  parseTransactionTypeFilter,
   toggleFilterId,
 } from "./filters"
 
@@ -13,6 +14,15 @@ describe("finance filters", () => {
     expect(parsePeriod(undefined)).toBe("all")
     expect(parsePeriod("decade")).toBe("all")
     expect(parsePeriod(["week", "month"])).toBe("all")
+  })
+
+  test("parses transaction type filters", () => {
+    expect(parseTransactionTypeFilter(undefined)).toBe("all")
+    expect(parseTransactionTypeFilter("INCOME")).toBe("INCOME")
+    expect(parseTransactionTypeFilter("EXPENSE")).toBe("EXPENSE")
+    expect(parseTransactionTypeFilter("TRANSFER")).toBe("TRANSFER")
+    expect(parseTransactionTypeFilter("UNKNOWN")).toBe("all")
+    expect(parseTransactionTypeFilter(["INCOME", "EXPENSE"])).toBe("all")
   })
 
   test("returns no date range for all time", () => {
