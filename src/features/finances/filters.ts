@@ -7,6 +7,10 @@ export type PeriodRange = {
   to: Date
 }
 
+type CategoryLike = {
+  kind: "INCOME" | "EXPENSE"
+}
+
 export function parsePeriod(
   value: string | string[] | undefined
 ): FinancePeriod {
@@ -62,5 +66,14 @@ export function getPeriodRange(
   return {
     from: new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0),
     to: endOfDay(new Date(now.getFullYear(), 11, 31)),
+  }
+}
+
+export function groupCategoriesByKind<TCategory extends CategoryLike>(
+  categories: readonly TCategory[]
+) {
+  return {
+    income: categories.filter((category) => category.kind === "INCOME"),
+    expense: categories.filter((category) => category.kind === "EXPENSE"),
   }
 }

@@ -11,11 +11,17 @@ import {
 import { actionData, actionError } from "@/lib/action-result"
 import { requireUser } from "@/lib/auth"
 
+function revalidateCategoryViews() {
+  revalidatePath("/dashboard")
+  revalidatePath("/finances")
+  revalidatePath("/finances/transaction/new")
+}
+
 export async function createCategoryAction(input: unknown) {
   try {
     const user = await requireUser()
     const category = await createCategory(user.id, input)
-    revalidatePath("/dashboard")
+    revalidateCategoryViews()
     return actionData(category)
   } catch (error) {
     return actionError(error)
@@ -26,7 +32,7 @@ export async function updateCategoryAction(categoryId: string, input: unknown) {
   try {
     const user = await requireUser()
     const category = await updateCategory(user.id, categoryId, input)
-    revalidatePath("/dashboard")
+    revalidateCategoryViews()
     return actionData(category)
   } catch (error) {
     return actionError(error)
@@ -37,7 +43,7 @@ export async function archiveCategoryAction(categoryId: string) {
   try {
     const user = await requireUser()
     const category = await archiveCategory(user.id, categoryId)
-    revalidatePath("/dashboard")
+    revalidateCategoryViews()
     return actionData(category)
   } catch (error) {
     return actionError(error)
@@ -48,7 +54,7 @@ export async function deleteCategoryAction(categoryId: string) {
   try {
     const user = await requireUser()
     await deleteCategory(user.id, categoryId)
-    revalidatePath("/dashboard")
+    revalidateCategoryViews()
     return actionData({ success: true })
   } catch (error) {
     return actionError(error)

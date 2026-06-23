@@ -5,7 +5,12 @@ import {
   AccountCardMenu,
   NewAccountButton,
 } from "@/features/finances/components/account-management"
-import { type FinancePeriod, periodOptions } from "@/features/finances/filters"
+import { NewCategoryButton } from "@/features/finances/components/category-management"
+import {
+  type FinancePeriod,
+  groupCategoriesByKind,
+  periodOptions,
+} from "@/features/finances/filters"
 import { cn } from "@/lib/utils"
 
 type FinancesPageProps = {
@@ -191,17 +196,6 @@ function FilterLink({
   )
 }
 
-function CategoryAction({ children }: { children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      className="inline-flex h-8 items-center border border-transparent px-3 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground"
-    >
-      {children}
-    </button>
-  )
-}
-
 function TransactionActionLink() {
   return (
     <Link
@@ -210,6 +204,39 @@ function TransactionActionLink() {
     >
       + New Transaction
     </Link>
+  )
+}
+
+function CategoryFilterRow({
+  categories,
+  filters,
+  label,
+}: {
+  categories: Category[]
+  filters: FinancesPageProps["filters"]
+  label: string
+}) {
+  if (!categories.length) {
+    return null
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+        {label}
+      </p>
+      {categories.map((category) => (
+        <FilterLink
+          key={category.id}
+          href={buildHref(filters, { categoryId: category.id })}
+          active={filters.categoryId === category.id}
+          fallbackToneClassName="bg-chart-3"
+          tone={category.color}
+        >
+          {category.name}
+        </FilterLink>
+      ))}
+    </div>
   )
 }
 
@@ -249,7 +276,7 @@ function AccountCards({
           <article
             key={account.id}
             className={cn(
-              "group relative border border-border p-4 pe-12 transition-colors hover:border-foreground focus-within:border-foreground",
+              "group relative border border-border p-4 pe-12 transition-colors focus-within:border-foreground hover:border-foreground",
               selectedAccountId === account.id && "border-primary"
             )}
           >
@@ -308,6 +335,7 @@ export function FinancesPage({
   const activeCategory = filters.categoryId
     ? categoryById.get(filters.categoryId)?.name
     : null
+  const groupedCategories = groupCategoriesByKind(categories)
 
   return (
     <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-10 lg:px-16">
@@ -380,19 +408,20 @@ export function FinancesPage({
             >
               All
             </FilterLink>
-            {categories.map((category) => (
-              <FilterLink
-                key={category.id}
-                href={buildHref(filters, { categoryId: category.id })}
-                active={filters.categoryId === category.id}
-                fallbackToneClassName="bg-chart-3"
-                tone={category.color}
-              >
-                {category.name}
-              </FilterLink>
-            ))}
-            <CategoryAction>+ New Category</CategoryAction>
+            <NewCategoryButton />
           </div>
+
+          <CategoryFilterRow
+            categories={groupedCategories.income}
+            filters={filters}
+            label="Income"
+          />
+
+          <CategoryFilterRow
+            categories={groupedCategories.expense}
+            filters={filters}
+            label="Expense"
+          />
         </section>
 
         <section className="space-y-6 border-b border-border py-6">
