@@ -10,7 +10,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <AppSidebar />
       <SidebarInset>
-        <div className="min-h-screen flex-1 bg-[#f7e8e4] md:min-h-min">
+        <div className="min-h-screen flex-1 bg-background md:min-h-min">
           {children}
         </div>
       </SidebarInset>
