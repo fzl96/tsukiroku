@@ -15,7 +15,6 @@ import { requireUser } from "@/lib/auth"
 function revalidateAccountViews() {
   revalidatePath("/dashboard")
   revalidatePath("/finances")
-  revalidatePath("/finances/transaction/new")
 }
 
 export async function createFinancialAccountAction(input: unknown) {

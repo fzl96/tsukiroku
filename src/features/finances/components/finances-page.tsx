@@ -7,6 +7,7 @@ import {
   NewAccountButton,
 } from "@/features/finances/components/account-management"
 import { NewCategoryButton } from "@/features/finances/components/category-management"
+import { NewTransactionDrawerButton } from "@/features/finances/components/new-transaction-drawer"
 import { TransactionList } from "@/features/finances/components/transaction-list"
 import {
   type FinancePeriod,
@@ -175,17 +176,6 @@ function FilterLink({
         />
       ) : null}
       {children}
-    </Link>
-  )
-}
-
-function TransactionActionLink() {
-  return (
-    <Link
-      href="/finances/transaction/new"
-      className="inline-flex h-8 items-center border border-transparent px-3 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase transition-colors hover:border-border hover:bg-accent hover:text-accent-foreground"
-    >
-      + New Transaction
     </Link>
   )
 }
@@ -450,7 +440,12 @@ export function FinancesPage({
                 ? ` / ${activeCategories.join(", ")}`
                 : ""}
             </p>
-            <TransactionActionLink />
+            <NewTransactionDrawerButton
+              accountBalances={accountBalances}
+              accounts={accounts}
+              categories={categories}
+              timezone={timezone}
+            />
           </div>
           <AccountCards
             accounts={accounts}
