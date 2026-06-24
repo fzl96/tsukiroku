@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { IconDotsVertical } from "@tabler/icons-react"
 import { useForm } from "react-hook-form"
 
 import type { FinancialAccount } from "@/db/schema"
@@ -24,15 +23,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -48,6 +38,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet"
 
 type AccountInput = {
   name: string
@@ -281,7 +279,7 @@ export function NewAccountButton() {
   )
 }
 
-function AccountConfirmDialog({
+function AccountConfirmSheet({
   actionLabel,
   description,
   onConfirm,
@@ -317,21 +315,35 @@ function AccountConfirmDialog({
   }
 
   return (
-    <AlertDialog
+    <Sheet
       open={open}
       onOpenChange={(nextOpen) => {
         setError(null)
         onOpenChange(nextOpen)
       }}
     >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
-        </AlertDialogHeader>
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <AlertDialogFooter>
-          <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+      <SheetContent
+        side="right"
+        className="w-full data-[side=right]:sm:max-w-lg"
+      >
+        <SheetHeader className="border-b border-border pb-5">
+          <SheetTitle className="font-heading text-3xl leading-none tracking-tight">
+            {title}
+          </SheetTitle>
+          <SheetDescription>{description}</SheetDescription>
+        </SheetHeader>
+        <div className="flex-1 px-4 py-5">
+          {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        </div>
+        <SheetFooter className="border-t border-border">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isPending}
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
           <Button
             type="button"
             variant={variant}
@@ -340,13 +352,16 @@ function AccountConfirmDialog({
           >
             {isPending ? "Working..." : actionLabel}
           </Button>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   )
 }
 
-export function AccountCardMenu({ account }: { account: FinancialAccount }) {
+export function AccountCardMenu({
+  account,
+  children,
+}: React.PropsWithChildren<{ account: FinancialAccount }>) {
   const router = useRouter()
   const [archiveOpen, setArchiveOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -381,15 +396,28 @@ export function AccountCardMenu({ account }: { account: FinancialAccount }) {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            className="absolute end-3 top-3 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100 data-[state=open]:opacity-100"
-            aria-label={`Open ${account.name} actions`}
-          >
-            <IconDotsVertical />
-          </Button>
+          {children ? (
+            React.isValidElement(children) ? (
+              React.cloneElement(
+                children as React.ReactElement<Record<string, unknown>>,
+                {
+                  "aria-label": `Open ${account.name} actions`,
+                }
+              )
+            ) : (
+              <button type="button" aria-label={`Open ${account.name} actions`}>
+                {children}
+              </button>
+            )
+          ) : (
+            <button
+              type="button"
+              className="absolute inset-0 z-10 cursor-pointer text-start focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              aria-label={`Open ${account.name} actions`}
+            >
+              <span className="sr-only">Open {account.name} actions</span>
+            </button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>
@@ -414,7 +442,7 @@ export function AccountCardMenu({ account }: { account: FinancialAccount }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AccountConfirmDialog
+      <AccountConfirmSheet
         actionLabel="Archive"
         description={`Archive ${account.name}. It will be hidden from new transactions but historical data remains.`}
         onConfirm={handleArchive}
@@ -423,7 +451,7 @@ export function AccountCardMenu({ account }: { account: FinancialAccount }) {
         title="Archive account?"
       />
 
-      <AccountConfirmDialog
+      <AccountConfirmSheet
         actionLabel="Delete"
         description={`Delete ${account.name}. This only succeeds if the account has no linked transactions or recurring payments.`}
         onConfirm={handleDelete}
@@ -433,24 +461,29 @@ export function AccountCardMenu({ account }: { account: FinancialAccount }) {
         variant="destructive"
       />
 
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-2xl">
+      <Sheet open={editOpen} onOpenChange={setEditOpen}>
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto data-[side=right]:sm:max-w-lg"
+        >
+          <SheetHeader className="border-b border-border pb-5">
+            <SheetTitle className="font-heading text-3xl leading-none tracking-tight">
               Edit account
-            </DialogTitle>
-            <DialogDescription>
+            </SheetTitle>
+            <SheetDescription>
               Update account details and its optional display color.
-            </DialogDescription>
-          </DialogHeader>
-          <AccountForm
-            account={account}
-            mode="edit"
-            onCancel={() => setEditOpen(false)}
-            onSubmit={handleEdit}
-          />
-        </DialogContent>
-      </Dialog>
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4 py-5">
+            <AccountForm
+              account={account}
+              mode="edit"
+              onCancel={() => setEditOpen(false)}
+              onSubmit={handleEdit}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   )
 }

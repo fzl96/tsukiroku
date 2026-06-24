@@ -39,6 +39,12 @@ mock.module("@/components/ui/sheet", () => ({
   }: React.PropsWithChildren<{ className?: string }>) => (
     <p className={className}>{children}</p>
   ),
+  SheetFooter: ({
+    children,
+    className,
+  }: React.PropsWithChildren<{ className?: string }>) => (
+    <footer className={className}>{children}</footer>
+  ),
   SheetHeader: ({
     children,
     className,
@@ -140,7 +146,7 @@ describe("FinancesPage", () => {
     expect(html).toContain('href="/finances?tab=overview"')
     expect(html).toContain('href="/finances?tab=transactions"')
     expect(html).toContain('href="/finances?tab=recurring"')
-    expect(html).toContain('href="/finances?tab=setup"')
+    expect(html).toContain('href="/finances?tab=manage"')
     expect(html).toContain("Recent transactions")
   })
 
@@ -215,7 +221,7 @@ describe("FinancesPage", () => {
     expect(html).toContain('aria-haspopup="dialog"')
   })
 
-  test("renders setup lists for accounts categories and finance settings", async () => {
+  test("renders manage lists for accounts categories and finance settings", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")
 
@@ -238,7 +244,7 @@ describe("FinancesPage", () => {
           period: "all",
           type: "all",
         }}
-        tab="setup"
+        tab="manage"
         timezone="UTC"
         transactions={[transaction]}
       />
@@ -252,6 +258,47 @@ describe("FinancesPage", () => {
     expect(html).toContain("UTC")
     expect(html).toContain("+ New Account")
     expect(html).toContain("+ New Category")
+  })
+
+  test("renders account and category action drawers from pointer menu triggers", async () => {
+    const { FinancesPage } =
+      await import("@/features/finances/components/finances-page")
+
+    const html = renderToStaticMarkup(
+      <FinancesPage
+        accountBalances={[
+          { accountId: account.id, amount: "1100", currency: "USD" },
+        ]}
+        accounts={[account]}
+        categories={[category]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
+        filters={{
+          accountIds: [],
+          categoryIds: [],
+          period: "all",
+          type: "all",
+        }}
+        tab="manage"
+        timezone="UTC"
+        transactions={[transaction]}
+      />
+    )
+
+    expect(html).toContain("cursor-pointer")
+    expect(html).toContain(`Open ${account.name} actions`)
+    expect(html).toContain(`Open ${category.name} actions`)
+    expect(html).toContain("Edit account")
+    expect(html).toContain("Archive account?")
+    expect(html).toContain("Delete account?")
+    expect(html).toContain("Edit category")
+    expect(html).toContain("Archive category?")
+    expect(html).toContain("Delete category?")
+    expect(html).not.toContain("tabler-icon-dots-vertical")
   })
 
   test("renders placeholder states for overview and recurring payments", async () => {

@@ -9,7 +9,7 @@ export const financeTabOptions = [
   "overview",
   "transactions",
   "recurring",
-  "setup",
+  "manage",
 ] as const
 export const transactionTypeFilterOptions = [
   "all",

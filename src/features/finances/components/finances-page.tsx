@@ -11,7 +11,10 @@ import {
   AccountCardMenu,
   NewAccountButton,
 } from "@/features/finances/components/account-management"
-import { NewCategoryButton } from "@/features/finances/components/category-management"
+import {
+  CategoryActionMenu,
+  NewCategoryButton,
+} from "@/features/finances/components/category-management"
 import { NewTransactionDrawerButton } from "@/features/finances/components/new-transaction-drawer"
 import { TransactionList } from "@/features/finances/components/transaction-list"
 import {
@@ -80,7 +83,7 @@ const tabLabels: Record<FinanceTab, string> = {
   overview: "Overview",
   transactions: "Transactions",
   recurring: "Recurring Payments",
-  setup: "Setup",
+  manage: "Manage",
 }
 
 const weekStartLabels = [
@@ -604,7 +607,7 @@ function TransactionTab({
   )
 }
 
-function SetupTab({
+function ManageTab({
   accountBalances,
   accounts,
   categories,
@@ -704,11 +707,11 @@ function SetupTab({
               <NewCategoryButton />
             </div>
 
-            <CategorySetupGroup
+            <CategoryManageGroup
               categories={groupedCategories.income}
               label="Income"
             />
-            <CategorySetupGroup
+            <CategoryManageGroup
               categories={groupedCategories.expense}
               label="Expense"
             />
@@ -748,7 +751,7 @@ function SetupTab({
   )
 }
 
-function CategorySetupGroup({
+function CategoryManageGroup({
   categories,
   label,
 }: {
@@ -763,24 +766,26 @@ function CategorySetupGroup({
       <div className="flex flex-wrap gap-2">
         {categories.length ? (
           categories.map((category) => (
-            <span
-              key={category.id}
-              className="inline-flex h-8 items-center gap-2 border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase"
-            >
-              {category.color ? (
-                <span
-                  className="size-2 rounded-full"
-                  style={{ backgroundColor: category.color }}
-                  aria-hidden="true"
-                />
-              ) : (
-                <span
-                  className="size-2 rounded-full bg-muted-foreground"
-                  aria-hidden="true"
-                />
-              )}
-              {category.name}
-            </span>
+            <CategoryActionMenu key={category.id} category={category}>
+              <button
+                type="button"
+                className="inline-flex h-8 cursor-pointer items-center gap-2 border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase transition-colors hover:bg-accent hover:text-accent-foreground"
+              >
+                {category.color ? (
+                  <span
+                    className="size-2 rounded-full"
+                    style={{ backgroundColor: category.color }}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <span
+                    className="size-2 rounded-full bg-muted-foreground"
+                    aria-hidden="true"
+                  />
+                )}
+                {category.name}
+              </button>
+            </CategoryActionMenu>
           ))
         ) : (
           <span className="text-sm text-muted-foreground">None yet.</span>
@@ -837,8 +842,8 @@ export function FinancesPage({
               </h1>
             </div>
             <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
-              {tab === "setup"
-                ? "Setup"
+              {tab === "manage"
+                ? "Manage"
                 : `${transactions.length} transactions`}
             </p>
           </div>
@@ -869,12 +874,12 @@ export function FinancesPage({
         {tab === "recurring" ? (
           <PlaceholderPanel
             title="Recurring payments are coming next."
-            description="This tab will manage scheduled transaction templates separately from setup data."
+            description="This tab will manage scheduled transaction templates separately from reference data."
           />
         ) : null}
 
-        {tab === "setup" ? (
-          <SetupTab
+        {tab === "manage" ? (
+          <ManageTab
             accountBalances={accountBalances}
             accounts={accounts}
             categories={categories}

@@ -4,6 +4,7 @@ import {
   getPeriodRange,
   groupCategoriesByKind,
   parseFilterIds,
+  parseFinanceTab,
   parsePeriod,
   parseTransactionTypeFilter,
   toggleFilterId,
@@ -14,6 +15,13 @@ describe("finance filters", () => {
     expect(parsePeriod(undefined)).toBe("all")
     expect(parsePeriod("decade")).toBe("all")
     expect(parsePeriod(["week", "month"])).toBe("all")
+  })
+
+  test("parses finance tabs and defaults to transactions", () => {
+    expect(parseFinanceTab(undefined)).toBe("transactions")
+    expect(parseFinanceTab("manage")).toBe("manage")
+    expect(parseFinanceTab("setup")).toBe("transactions")
+    expect(parseFinanceTab(["manage", "transactions"])).toBe("transactions")
   })
 
   test("parses transaction type filters", () => {
