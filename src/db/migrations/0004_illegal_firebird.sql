@@ -1,0 +1,1 @@
+ALTER TABLE "user_finance_settings" ADD COLUMN "timezone" text DEFAULT 'Asia/Jakarta' NOT NULL;

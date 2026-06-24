@@ -1,3 +1,9 @@
+import {
+  getZonedMonthRange,
+  getZonedWeekRange,
+  getZonedYearRange,
+} from "@/lib/timezone"
+
 export const periodOptions = ["all", "week", "month", "year"] as const
 export const transactionTypeFilterOptions = [
   "all",
@@ -12,7 +18,7 @@ export type FinanceTransactionTypeFilter =
 
 export type PeriodRange = {
   from: Date
-  to: Date
+  toExclusive: Date
 }
 
 type CategoryLike = {
@@ -55,24 +61,40 @@ export function toggleFilterId(ids: readonly string[], id: string) {
   return ids.includes(id) ? ids.filter((item) => item !== id) : [...ids, id]
 }
 
-function endOfDay(date: Date) {
-  return new Date(
-    date.getFullYear(),
-    date.getMonth(),
-    date.getDate(),
-    23,
-    59,
-    59,
-    999
-  )
-}
-
 export function getPeriodRange(
   period: FinancePeriod,
-  now = new Date()
+  now = new Date(),
+  options?: {
+    monthStartDay?: number
+    timezone?: string
+    weekStartsOn?: number
+  }
 ): PeriodRange | null {
   if (period === "all") {
     return null
+  }
+
+  if (options?.timezone) {
+    if (period === "week") {
+      const range = getZonedWeekRange(
+        now,
+        options.timezone,
+        options.weekStartsOn ?? 1
+      )
+      return { from: range.startUtc, toExclusive: range.endUtc }
+    }
+
+    if (period === "month") {
+      const range = getZonedMonthRange(
+        now,
+        options.timezone,
+        options.monthStartDay ?? 1
+      )
+      return { from: range.startUtc, toExclusive: range.endUtc }
+    }
+
+    const range = getZonedYearRange(now, options.timezone)
+    return { from: range.startUtc, toExclusive: range.endUtc }
   }
 
   if (period === "week") {
@@ -83,21 +105,21 @@ export function getPeriodRange(
     from.setHours(0, 0, 0, 0)
 
     const to = new Date(from)
-    to.setDate(from.getDate() + 6)
+    to.setDate(from.getDate() + 7)
 
-    return { from, to: endOfDay(to) }
+    return { from, toExclusive: to }
   }
 
   if (period === "month") {
     return {
       from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
-      to: endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0)),
+      toExclusive: new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0),
     }
   }
 
   return {
     from: new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0),
-    to: endOfDay(new Date(now.getFullYear(), 11, 31)),
+    toExclusive: new Date(now.getFullYear() + 1, 0, 1, 0, 0, 0, 0),
   }
 }
 

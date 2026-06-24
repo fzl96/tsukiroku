@@ -7,20 +7,23 @@ describe("settings validation", () => {
     expect(
       updateUserFinanceSettingsSchema.parse({
         baseCurrency: "IDR",
+        timezone: "Asia/Jakarta",
         weekStartsOn: 1,
         monthStartDay: 1,
       }),
     ).toEqual({
       baseCurrency: "IDR",
+      timezone: "Asia/Jakarta",
       weekStartsOn: 1,
       monthStartDay: 1,
     })
   })
 
-  test("rejects invalid currency and period values", () => {
+  test("rejects invalid currency, timezone, and period values", () => {
     expect(() =>
       updateUserFinanceSettingsSchema.parse({
         baseCurrency: "idr",
+        timezone: "Not/AZone",
         weekStartsOn: 7,
         monthStartDay: 32,
       }),

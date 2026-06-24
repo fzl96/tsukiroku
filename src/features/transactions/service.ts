@@ -121,27 +121,44 @@ export async function updateTransaction(
   }
 
   const partial = updateTransactionSchema.parse(input)
+  const valueOrExisting = <Key extends keyof typeof partial>(
+    key: Key,
+    existingValue: CreateTransactionInput[Key]
+  ) =>
+    Object.prototype.hasOwnProperty.call(partial, key)
+      ? (partial[key] as CreateTransactionInput[Key])
+      : existingValue
   const candidate = createTransactionSchema.parse({
-    accountId: partial.accountId ?? existing.accountId,
-    transferAccountId:
-      partial.transferAccountId ?? existing.transferAccountId ?? null,
+    accountId: valueOrExisting("accountId", existing.accountId),
+    transferAccountId: valueOrExisting(
+      "transferAccountId",
+      existing.transferAccountId ?? null
+    ),
     title:
-      partial.title ??
+      valueOrExisting(
+        "title",
+        existing.title ??
+          existing.merchant ??
+          existing.note ??
+          "Untitled transaction"
+      ) ??
       existing.title ??
       existing.merchant ??
       existing.note ??
       "Untitled transaction",
-    type: partial.type ?? existing.type,
-    status: partial.status ?? existing.status,
-    amount: partial.amount ?? existing.amount,
-    currency: partial.currency ?? existing.currency,
-    occurredAt: partial.occurredAt ?? existing.occurredAt,
-    merchant: partial.merchant ?? existing.merchant,
-    note: partial.note ?? existing.note,
-    reference: partial.reference ?? existing.reference,
-    categoryId: partial.categoryId ?? existing.categoryId,
-    recurringPaymentId:
-      partial.recurringPaymentId ?? existing.recurringPaymentId,
+    type: valueOrExisting("type", existing.type),
+    status: valueOrExisting("status", existing.status),
+    amount: valueOrExisting("amount", existing.amount),
+    currency: valueOrExisting("currency", existing.currency),
+    occurredAt: valueOrExisting("occurredAt", existing.occurredAt),
+    merchant: valueOrExisting("merchant", existing.merchant),
+    note: valueOrExisting("note", existing.note),
+    reference: valueOrExisting("reference", existing.reference),
+    categoryId: valueOrExisting("categoryId", existing.categoryId),
+    recurringPaymentId: valueOrExisting(
+      "recurringPaymentId",
+      existing.recurringPaymentId
+    ),
   })
 
   await assertTransactionResources(userId, candidate)

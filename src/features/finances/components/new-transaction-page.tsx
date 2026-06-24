@@ -24,6 +24,11 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { AccountSelectWithBalance } from "@/features/finances/components/account-select-with-balance"
 import { createTransactionAction } from "@/features/transactions/actions"
+import {
+  getDateInputValueInTimeZone,
+  getTimeInputValueInTimeZone,
+  zonedDateTimeToDate,
+} from "@/lib/timezone"
 
 type NewTransactionPageProps = {
   accountBalances: Array<{
@@ -33,6 +38,7 @@ type NewTransactionPageProps = {
   }>
   accounts: FinancialAccount[]
   categories: Category[]
+  timezone: string
 }
 
 type NewTransactionFormValues = {
@@ -51,14 +57,6 @@ type NewTransactionFormValues = {
   note: string
 }
 
-function getDateValue(date: Date) {
-  return date.toISOString().slice(0, 10)
-}
-
-function getTimeValue(date: Date) {
-  return date.toTimeString().slice(0, 5)
-}
-
 function selectClassName() {
   return "w-full [&_select]:h-12 [&_select]:text-base"
 }
@@ -70,6 +68,7 @@ export function NewTransactionPage({
   accountBalances,
   accounts,
   categories,
+  timezone,
 }: NewTransactionPageProps) {
   const router = useRouter()
   const now = new Date()
@@ -90,8 +89,8 @@ export function NewTransactionPage({
       amount: "",
       currency: defaultCurrency,
       merchant: "",
-      occurredDate: getDateValue(now),
-      occurredTime: getTimeValue(now),
+      occurredDate: getDateInputValueInTimeZone(now, timezone),
+      occurredTime: getTimeInputValueInTimeZone(now, timezone),
       status: "POSTED",
       reference: "",
       note: "",
@@ -126,8 +125,10 @@ export function NewTransactionPage({
   }, [form, selectedAccountId])
 
   function handleSubmit(values: NewTransactionFormValues) {
-    const occurredAt = new Date(
-      `${values.occurredDate}T${values.occurredTime || "00:00"}:00`
+    const occurredAt = zonedDateTimeToDate(
+      values.occurredDate,
+      values.occurredTime,
+      timezone
     )
 
     startTransition(async () => {

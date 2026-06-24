@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, lte, or } from "drizzle-orm"
+import { and, desc, eq, gte, inArray, lt, lte, or } from "drizzle-orm"
 
 import { db } from "@/db"
 import { transaction } from "@/db/schema"
@@ -41,6 +41,10 @@ export async function listTransactions(userId: string, filters?: unknown) {
 
   if (parsedFilters?.to) {
     conditions.push(lte(transaction.occurredAt, parsedFilters.to))
+  }
+
+  if (parsedFilters?.toExclusive) {
+    conditions.push(lt(transaction.occurredAt, parsedFilters.toExclusive))
   }
 
   const accountIds = mergeUniqueIds(

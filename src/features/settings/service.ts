@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm"
 import { db } from "@/db"
 import { userFinanceSettings } from "@/db/schema"
 import { updateUserFinanceSettingsSchema } from "@/features/settings/validations"
+import { normalizeTimeZone } from "@/lib/timezone"
 
 export async function getUserFinanceSettings(userId: string) {
   const [settings] = await db
@@ -14,7 +15,10 @@ export async function getUserFinanceSettings(userId: string) {
   return settings ?? null
 }
 
-export async function createDefaultFinanceSettings(userId: string) {
+export async function createDefaultFinanceSettings(
+  userId: string,
+  input?: { timezone?: string | null }
+) {
   const existing = await getUserFinanceSettings(userId)
 
   if (existing) {
@@ -26,6 +30,7 @@ export async function createDefaultFinanceSettings(userId: string) {
     .values({
       userId,
       baseCurrency: "IDR",
+      timezone: normalizeTimeZone(input?.timezone),
       weekStartsOn: 1,
       monthStartDay: 1,
     })

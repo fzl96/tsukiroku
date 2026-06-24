@@ -83,6 +83,7 @@ export const userFinanceSettings = pgTable("user_finance_settings", {
   id: id(),
   userId: userId().unique(),
   baseCurrency: text("base_currency").notNull(),
+  timezone: text("timezone").notNull().default("Asia/Jakarta"),
   weekStartsOn: integer("week_starts_on").notNull().default(1),
   monthStartDay: integer("month_start_day").notNull().default(1),
   createdAt: createdAt(),

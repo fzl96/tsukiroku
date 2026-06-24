@@ -29,6 +29,13 @@
       "when": 1782251811619,
       "tag": "0003_shocking_leper_queen",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782253465379,
+      "tag": "0004_illegal_firebird",
+      "breakpoints": true
     }
   ]
 }

@@ -98,6 +98,7 @@ export const listTransactionsFiltersSchema = z
   .object({
     from: z.date().optional(),
     to: z.date().optional(),
+    toExclusive: z.date().optional(),
     accountId: z.string().min(1).optional(),
     accountIds: z.array(z.string().min(1)).optional(),
     categoryId: z.string().min(1).optional(),

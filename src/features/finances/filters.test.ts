@@ -32,21 +32,34 @@ describe("finance filters", () => {
   test("builds a Monday-start week range", () => {
     expect(getPeriodRange("week", new Date(2026, 5, 17, 12))).toEqual({
       from: new Date(2026, 5, 15, 0, 0, 0, 0),
-      to: new Date(2026, 5, 21, 23, 59, 59, 999),
+      toExclusive: new Date(2026, 5, 22, 0, 0, 0, 0),
     })
   })
 
   test("builds a calendar month range", () => {
     expect(getPeriodRange("month", new Date(2026, 5, 17, 12))).toEqual({
       from: new Date(2026, 5, 1, 0, 0, 0, 0),
-      to: new Date(2026, 5, 30, 23, 59, 59, 999),
+      toExclusive: new Date(2026, 6, 1, 0, 0, 0, 0),
     })
   })
 
   test("builds a calendar year range", () => {
     expect(getPeriodRange("year", new Date(2026, 5, 17, 12))).toEqual({
       from: new Date(2026, 0, 1, 0, 0, 0, 0),
-      to: new Date(2026, 11, 31, 23, 59, 59, 999),
+      toExclusive: new Date(2027, 0, 1, 0, 0, 0, 0),
+    })
+  })
+
+  test("builds a timezone-aware month range", () => {
+    expect(
+      getPeriodRange("month", new Date("2026-06-24T03:00:00.000Z"), {
+        monthStartDay: 1,
+        timezone: "Asia/Jakarta",
+        weekStartsOn: 1,
+      })
+    ).toEqual({
+      from: new Date("2026-05-31T17:00:00.000Z"),
+      toExclusive: new Date("2026-06-30T17:00:00.000Z"),
     })
   })
 

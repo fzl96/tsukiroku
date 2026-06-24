@@ -1,6 +1,7 @@
 import { listFinancialAccounts } from "@/features/accounts/queries"
 import { getAccountBalance } from "@/features/accounts/service"
 import { listCategories } from "@/features/categories/queries"
+import { FinanceTimezoneInitializer } from "@/features/finances/components/finance-timezone-initializer"
 import { FinancesPage } from "@/features/finances/components/finances-page"
 import {
   getPeriodRange,
@@ -8,6 +9,10 @@ import {
   parsePeriod,
   parseTransactionTypeFilter,
 } from "@/features/finances/filters"
+import {
+  createDefaultFinanceSettings,
+  getUserFinanceSettings,
+} from "@/features/settings/service"
 import { listTransactions } from "@/features/transactions/queries"
 import { requireUser } from "@/lib/auth"
 
@@ -25,9 +30,16 @@ export default async function FinancesRoute({
 }) {
   const user = await requireUser()
   const query = await searchParams
+  const existingSettings = await getUserFinanceSettings(user.id)
+  const settings =
+    existingSettings ?? (await createDefaultFinanceSettings(user.id))
   const period = parsePeriod(query.period)
   const type = parseTransactionTypeFilter(query.type)
-  const periodRange = getPeriodRange(period)
+  const periodRange = getPeriodRange(period, new Date(), {
+    monthStartDay: settings.monthStartDay,
+    timezone: settings.timezone,
+    weekStartsOn: settings.weekStartsOn,
+  })
   const accountIds = parseFilterIds(query.accountId)
   const categoryIds = parseFilterIds(query.categoryId)
 
@@ -48,12 +60,23 @@ export default async function FinancesRoute({
   )
 
   return (
-    <FinancesPage
-      accounts={accounts}
-      accountBalances={accountBalances}
-      categories={categories}
-      transactions={transactions}
-      filters={{ accountIds, categoryIds, period, type }}
-    />
+    <>
+      {!existingSettings ? (
+        <FinanceTimezoneInitializer
+          baseCurrency={settings.baseCurrency}
+          monthStartDay={settings.monthStartDay}
+          timezone={settings.timezone}
+          weekStartsOn={settings.weekStartsOn}
+        />
+      ) : null}
+      <FinancesPage
+        accounts={accounts}
+        accountBalances={accountBalances}
+        categories={categories}
+        timezone={settings.timezone}
+        transactions={transactions}
+        filters={{ accountIds, categoryIds, period, type }}
+      />
+    </>
   )
 }

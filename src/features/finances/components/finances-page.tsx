@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { addDays } from "date-fns"
 
 import type { Category, FinancialAccount, Transaction } from "@/db/schema"
 import {
@@ -6,6 +7,7 @@ import {
   NewAccountButton,
 } from "@/features/finances/components/account-management"
 import { NewCategoryButton } from "@/features/finances/components/category-management"
+import { TransactionList } from "@/features/finances/components/transaction-list"
 import {
   type FinancePeriod,
   type FinanceTransactionTypeFilter,
@@ -14,6 +16,11 @@ import {
   toggleFilterId,
   transactionTypeFilterOptions,
 } from "@/features/finances/filters"
+import {
+  formatDateForUser,
+  getDateInputValueInTimeZone,
+  parseUserDateAsUtc,
+} from "@/lib/timezone"
 import { cn } from "@/lib/utils"
 
 type FinancesPageProps = {
@@ -24,6 +31,7 @@ type FinancesPageProps = {
     currency: string
   }>
   categories: Category[]
+  timezone: string
   transactions: Transaction[]
   filters: {
     accountIds: string[]
@@ -66,69 +74,31 @@ function formatCurrency(
   }
 }
 
-function formatDate(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date)
-}
-
-function getTransactionTitle(
-  transaction: Transaction,
-  accounts: Map<string, string>
-) {
-  if (transaction.title) {
-    return transaction.title
-  }
-
-  if (transaction.merchant) {
-    return transaction.merchant
-  }
-
-  if (transaction.type === "TRANSFER") {
-    const destination = transaction.transferAccountId
-      ? accounts.get(transaction.transferAccountId)
-      : null
-
-    return destination ? `Transfer to ${destination}` : "Transfer"
-  }
-
-  return transaction.note ?? "Untitled transaction"
-}
-
-function getGroupLabel(date: Date) {
+function getGroupLabel(date: Date, timezone: string) {
   const today = new Date()
-  const current = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    today.getDate()
+  const todayValue = getDateInputValueInTimeZone(today, timezone)
+  const yesterdayValue = getDateInputValueInTimeZone(
+    addDays(parseUserDateAsUtc(todayValue, timezone), -1),
+    timezone
   )
-  const target = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-  const diff = Math.round(
-    (target.getTime() - current.getTime()) / (1000 * 60 * 60 * 24)
-  )
+  const targetValue = getDateInputValueInTimeZone(date, timezone)
 
-  if (diff === 0) {
+  if (targetValue === todayValue) {
     return "Today"
   }
 
-  if (diff === -1) {
+  if (targetValue === yesterdayValue) {
     return "Yesterday"
   }
 
-  return new Intl.DateTimeFormat("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  }).format(date)
+  return formatDateForUser(date, timezone)
 }
 
-function groupTransactions(transactions: Transaction[]) {
+function groupTransactions(transactions: Transaction[], timezone: string) {
   return transactions.reduce<
     Array<{ label: string; transactions: Transaction[] }>
   >((groups, transaction) => {
-    const label = getGroupLabel(transaction.occurredAt)
+    const label = getGroupLabel(transaction.occurredAt, timezone)
     const group = groups.find((item) => item.label === label)
 
     if (group) {
@@ -344,6 +314,7 @@ export function FinancesPage({
   accountBalances,
   accounts,
   categories,
+  timezone,
   transactions,
   filters,
 }: FinancesPageProps) {
@@ -351,7 +322,7 @@ export function FinancesPage({
     accounts.map((account) => [account.id, account.name])
   )
   const categoryById = new Map(categories.map((item) => [item.id, item]))
-  const groupedTransactions = groupTransactions(transactions)
+  const groupedTransactions = groupTransactions(transactions, timezone)
   const activeAccounts = filters.accountIds
     .map((accountId) => accountNames.get(accountId))
     .filter((name): name is string => Boolean(name))
@@ -486,75 +457,18 @@ export function FinancesPage({
 
         <section className="py-6">
           {groupedTransactions.length ? (
-            <div className="space-y-10">
-              {groupedTransactions.map((group) => (
-                <div key={group.label}>
-                  <div className="mb-5 border-b border-border pb-3">
-                    <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-                      {group.label} · {group.transactions.length}
-                    </p>
-                  </div>
-                  <div className="space-y-5">
-                    {group.transactions.map((transaction) => {
-                      const category = transaction.categoryId
-                        ? categoryById.get(transaction.categoryId)
-                        : null
-                      const accountName =
-                        accountNames.get(transaction.accountId) ??
-                        "Unknown account"
-
-                      return (
-                        <article
-                          key={transaction.id}
-                          className="grid grid-cols-[24px_1fr_auto] items-start gap-4"
-                        >
-                          <span className="mt-1 size-5 border border-border" />
-                          <div className="min-w-0">
-                            <h2 className="truncate text-base leading-6">
-                              {getTransactionTitle(transaction, accountNames)}
-                            </h2>
-                            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
-                              <span className="inline-flex items-center gap-2">
-                                {category?.color ? (
-                                  <span
-                                    className="size-2 rounded-full"
-                                    style={{ backgroundColor: category.color }}
-                                    aria-hidden="true"
-                                  />
-                                ) : (
-                                  <span
-                                    className="size-2 rounded-full bg-chart-2"
-                                    aria-hidden="true"
-                                  />
-                                )}
-                                {category?.name ?? accountName}
-                              </span>
-                              <span>{transaction.type}</span>
-                              <span>{transaction.status}</span>
-                              <span>{formatDate(transaction.occurredAt)}</span>
-                            </div>
-                          </div>
-                          <p
-                            className={cn(
-                              "pt-0.5 text-right font-mono text-sm",
-                              transaction.type === "EXPENSE"
-                                ? "text-destructive"
-                                : "text-chart-2"
-                            )}
-                          >
-                            {formatCurrency(
-                              transaction.amount,
-                              transaction.currency,
-                              transaction.type
-                            )}
-                          </p>
-                        </article>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <TransactionList
+              key={[
+                filters.period,
+                filters.type,
+                filters.accountIds.join(","),
+                filters.categoryIds.join(","),
+              ].join(":")}
+              accounts={accounts}
+              categories={categories}
+              groups={groupedTransactions}
+              timezone={timezone}
+            />
           ) : (
             <div className="border-b border-border py-14">
               <p className="text-lg">No transactions found.</p>
