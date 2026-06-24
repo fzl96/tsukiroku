@@ -21,6 +21,7 @@ import {
   getDateInputValueInTimeZone,
   parseUserDateAsUtc,
 } from "@/lib/timezone"
+import { formatCurrencyAmount } from "@/lib/money"
 import { cn } from "@/lib/utils"
 
 type FinancesPageProps = {
@@ -60,18 +61,9 @@ function formatCurrency(
   currency: string,
   type: Transaction["type"]
 ) {
-  const value = Number(amount)
-  const signedValue = type === "EXPENSE" ? -value : value
-
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(signedValue)
-  } catch {
-    return `${signedValue.toFixed(2)} ${currency}`
-  }
+  return formatCurrencyAmount(amount, currency, {
+    negative: type === "EXPENSE",
+  })
 }
 
 function getGroupLabel(date: Date, timezone: string) {
@@ -350,90 +342,102 @@ export function FinancesPage({
           </div>
         </header>
 
-        <section className="space-y-4 border-b border-border py-10">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-              Period
-            </p>
-            {periodOptions.map((period) => (
-              <FilterLink
-                key={period}
-                href={buildHref(filters, { period })}
-                active={filters.period === period}
-                fallbackToneClassName=""
-              >
-                {periodLabels[period]}
-              </FilterLink>
-            ))}
-          </div>
+        <section className="border-b border-border py-6">
+          <details className="group">
+            <summary className="inline-flex h-8 cursor-pointer list-none items-center border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [&::-webkit-details-marker]:hidden">
+              <span className="group-open:hidden">Show Filters</span>
+              <span className="hidden group-open:inline">Hide Filters</span>
+            </summary>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-              Account
-            </p>
-            <FilterLink
-              href={buildHref(filters, { accountIds: [] })}
-              active={!filters.accountIds.length}
-              fallbackToneClassName=""
-            >
-              All
-            </FilterLink>
-            {accounts.map((account) => (
-              <FilterLink
-                key={account.id}
-                href={buildHref(filters, {
-                  accountIds: toggleFilterId(filters.accountIds, account.id),
-                })}
-                active={filters.accountIds.includes(account.id)}
-                tone={account.color}
-              >
-                {account.name}
-              </FilterLink>
-            ))}
-            <NewAccountButton />
-          </div>
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                  Period
+                </p>
+                {periodOptions.map((period) => (
+                  <FilterLink
+                    key={period}
+                    href={buildHref(filters, { period })}
+                    active={filters.period === period}
+                    fallbackToneClassName=""
+                  >
+                    {periodLabels[period]}
+                  </FilterLink>
+                ))}
+              </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-              Type
-            </p>
-            {transactionTypeFilterOptions.map((type) => (
-              <FilterLink
-                key={type}
-                href={buildHref(filters, { type })}
-                active={filters.type === type}
-                fallbackToneClassName=""
-              >
-                {typeLabels[type]}
-              </FilterLink>
-            ))}
-          </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                  Account
+                </p>
+                <FilterLink
+                  href={buildHref(filters, { accountIds: [] })}
+                  active={!filters.accountIds.length}
+                  fallbackToneClassName=""
+                >
+                  All
+                </FilterLink>
+                {accounts.map((account) => (
+                  <FilterLink
+                    key={account.id}
+                    href={buildHref(filters, {
+                      accountIds: toggleFilterId(
+                        filters.accountIds,
+                        account.id
+                      ),
+                    })}
+                    active={filters.accountIds.includes(account.id)}
+                    tone={account.color}
+                  >
+                    {account.name}
+                  </FilterLink>
+                ))}
+                <NewAccountButton />
+              </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-              Category
-            </p>
-            <FilterLink
-              href={buildHref(filters, { categoryIds: [] })}
-              active={!filters.categoryIds.length}
-              fallbackToneClassName=""
-            >
-              All
-            </FilterLink>
-            <NewCategoryButton />
-          </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                  Type
+                </p>
+                {transactionTypeFilterOptions.map((type) => (
+                  <FilterLink
+                    key={type}
+                    href={buildHref(filters, { type })}
+                    active={filters.type === type}
+                    fallbackToneClassName=""
+                  >
+                    {typeLabels[type]}
+                  </FilterLink>
+                ))}
+              </div>
 
-          <CategoryFilterRow
-            categories={groupedCategories.income}
-            filters={filters}
-            label="Income"
-          />
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="mr-2 w-20 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                  Category
+                </p>
+                <FilterLink
+                  href={buildHref(filters, { categoryIds: [] })}
+                  active={!filters.categoryIds.length}
+                  fallbackToneClassName=""
+                >
+                  All
+                </FilterLink>
+                <NewCategoryButton />
+              </div>
 
-          <CategoryFilterRow
-            categories={groupedCategories.expense}
-            filters={filters}
-            label="Expense"
-          />
+              <CategoryFilterRow
+                categories={groupedCategories.income}
+                filters={filters}
+                label="Income"
+              />
+
+              <CategoryFilterRow
+                categories={groupedCategories.expense}
+                filters={filters}
+                label="Expense"
+              />
+            </div>
+          </details>
         </section>
 
         <section className="space-y-6 border-b border-border py-6">

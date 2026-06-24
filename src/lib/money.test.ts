@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test"
 import {
   addMoney,
   assertPositiveMoney,
+  formatCurrencyAmount,
   subtractMoney,
   sumMoney,
 } from "./money"
@@ -15,9 +16,11 @@ describe("money helpers", () => {
   })
 
   test("rejects zero, negative, and invalid money values", () => {
-    expect(() => assertPositiveMoney("0")).toThrow("Amount must be greater than 0")
+    expect(() => assertPositiveMoney("0")).toThrow(
+      "Amount must be greater than 0"
+    )
     expect(() => assertPositiveMoney("-1")).toThrow(
-      "Amount must be greater than 0",
+      "Amount must be greater than 0"
     )
     expect(() => assertPositiveMoney("abc")).toThrow("Amount must be valid")
   })
@@ -29,5 +32,12 @@ describe("money helpers", () => {
 
   test("sums decimal strings without floating point drift", () => {
     expect(sumMoney(["0.10", "0.20", "0.30"])).toBe("0.60")
+  })
+
+  test("formats currency display with deterministic fraction digits", () => {
+    expect(formatCurrencyAmount("89000", "IDR", { negative: true })).toBe(
+      "-IDR 89,000.00"
+    )
+    expect(formatCurrencyAmount("500000", "idr")).toBe("IDR 500,000.00")
   })
 })

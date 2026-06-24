@@ -41,6 +41,7 @@ import {
   getTimeInputValueInTimeZone,
   zonedDateTimeToDate,
 } from "@/lib/timezone"
+import { formatCurrencyAmount } from "@/lib/money"
 import { cn } from "@/lib/utils"
 
 type TransactionRowProps = {
@@ -78,18 +79,9 @@ function formatCurrency(
   currency: string,
   type: Transaction["type"]
 ) {
-  const value = Number(amount)
-  const signedValue = type === "EXPENSE" ? -value : value
-
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(signedValue)
-  } catch {
-    return `${signedValue.toFixed(2)} ${currency}`
-  }
+  return formatCurrencyAmount(amount, currency, {
+    negative: type === "EXPENSE",
+  })
 }
 
 function getTransactionTitle(

@@ -4,6 +4,7 @@ import * as React from "react"
 
 import type { FinancialAccount } from "@/db/schema"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
+import { formatCurrencyAmount } from "@/lib/money"
 
 type AccountBalance = {
   accountId: string
@@ -25,17 +26,7 @@ type AccountSelectWithBalanceProps = {
 }
 
 function formatBalance(amount: string, currency: string) {
-  const value = Number(amount)
-
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-      maximumFractionDigits: 2,
-    }).format(value)
-  } catch {
-    return `${value.toFixed(2)} ${currency}`
-  }
+  return formatCurrencyAmount(amount, currency)
 }
 
 export function AccountSelectWithBalance({
