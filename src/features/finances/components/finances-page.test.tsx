@@ -108,7 +108,7 @@ const transaction = {
 } as Transaction
 
 describe("FinancesPage", () => {
-  test("hides filter controls inside a closed disclosure by default", async () => {
+  test("renders four query-param tabs and defaults to transactions", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")
 
@@ -119,22 +119,66 @@ describe("FinancesPage", () => {
         ]}
         accounts={[account]}
         categories={[category]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
         filters={{
           accountIds: [],
           categoryIds: [],
           period: "all",
           type: "all",
         }}
+        tab="transactions"
         timezone="UTC"
         transactions={[transaction]}
       />
     )
 
-    expect(html).toContain("<details")
-    expect(html).not.toContain("<details open")
-    expect(html).toContain("<summary")
-    expect(html).toContain("Filters")
-    expect(html.indexOf("Filters")).toBeLessThan(html.indexOf("Period"))
+    expect(html).toContain('href="/finances?tab=overview"')
+    expect(html).toContain('href="/finances?tab=transactions"')
+    expect(html).toContain('href="/finances?tab=recurring"')
+    expect(html).toContain('href="/finances?tab=setup"')
+    expect(html).toContain("Recent transactions")
+  })
+
+  test("opens transaction filters from a right-side sheet", async () => {
+    const { FinancesPage } =
+      await import("@/features/finances/components/finances-page")
+
+    const html = renderToStaticMarkup(
+      <FinancesPage
+        accountBalances={[
+          { accountId: account.id, amount: "1100", currency: "USD" },
+        ]}
+        accounts={[account]}
+        categories={[category]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
+        filters={{
+          accountIds: [],
+          categoryIds: [],
+          period: "all",
+          type: "all",
+        }}
+        tab="transactions"
+        timezone="UTC"
+        transactions={[transaction]}
+      />
+    )
+
+    expect(html).toContain("FILTER")
+    expect(html).toContain("Filter transactions")
+    expect(html).toContain('data-side="right"')
+    expect(html).toContain("Period")
+    expect(html).toContain("Account")
+    expect(html).toContain("Category")
   })
 
   test("opens new transactions from an in-place drawer trigger", async () => {
@@ -148,12 +192,19 @@ describe("FinancesPage", () => {
         ]}
         accounts={[account]}
         categories={[category]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
         filters={{
           accountIds: [],
           categoryIds: [],
           period: "all",
           type: "all",
         }}
+        tab="transactions"
         timezone="UTC"
         transactions={[transaction]}
       />
@@ -162,6 +213,81 @@ describe("FinancesPage", () => {
     expect(html).toContain("+ New Transaction")
     expect(html).not.toContain('href="/finances/transaction/new"')
     expect(html).toContain('aria-haspopup="dialog"')
+  })
+
+  test("renders setup lists for accounts categories and finance settings", async () => {
+    const { FinancesPage } =
+      await import("@/features/finances/components/finances-page")
+
+    const html = renderToStaticMarkup(
+      <FinancesPage
+        accountBalances={[
+          { accountId: account.id, amount: "1100", currency: "USD" },
+        ]}
+        accounts={[account]}
+        categories={[category]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
+        filters={{
+          accountIds: [],
+          categoryIds: [],
+          period: "all",
+          type: "all",
+        }}
+        tab="setup"
+        timezone="UTC"
+        transactions={[transaction]}
+      />
+    )
+
+    expect(html).toContain("Accounts")
+    expect(html).toContain("Categories")
+    expect(html).toContain("Finance settings")
+    expect(html).toContain("Base currency")
+    expect(html).toContain("USD")
+    expect(html).toContain("UTC")
+    expect(html).toContain("+ New Account")
+    expect(html).toContain("+ New Category")
+  })
+
+  test("renders placeholder states for overview and recurring payments", async () => {
+    const { FinancesPage } =
+      await import("@/features/finances/components/finances-page")
+
+    const renderPage = (tab: "overview" | "recurring") =>
+      renderToStaticMarkup(
+        <FinancesPage
+          accountBalances={[
+            { accountId: account.id, amount: "1100", currency: "USD" },
+          ]}
+          accounts={[account]}
+          categories={[category]}
+          financeSettings={{
+            baseCurrency: "USD",
+            monthStartDay: 1,
+            timezone: "UTC",
+            weekStartsOn: 1,
+          }}
+          filters={{
+            accountIds: [],
+            categoryIds: [],
+            period: "all",
+            type: "all",
+          }}
+          tab={tab}
+          timezone="UTC"
+          transactions={[transaction]}
+        />
+      )
+
+    expect(renderPage("overview")).toContain("Overview is coming next.")
+    expect(renderPage("recurring")).toContain(
+      "Recurring payments are coming next."
+    )
   })
 
   test("sizes the transaction drawer from its usage and keeps header and actions sticky", async () => {
@@ -175,12 +301,19 @@ describe("FinancesPage", () => {
         ]}
         accounts={[account]}
         categories={[category]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
         filters={{
           accountIds: [],
           categoryIds: [],
           period: "all",
           type: "all",
         }}
+        tab="transactions"
         timezone="UTC"
         transactions={[transaction]}
       />

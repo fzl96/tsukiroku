@@ -5,6 +5,12 @@ import {
 } from "@/lib/timezone"
 
 export const periodOptions = ["all", "week", "month", "year"] as const
+export const financeTabOptions = [
+  "overview",
+  "transactions",
+  "recurring",
+  "setup",
+] as const
 export const transactionTypeFilterOptions = [
   "all",
   "INCOME",
@@ -13,6 +19,7 @@ export const transactionTypeFilterOptions = [
 ] as const
 
 export type FinancePeriod = (typeof periodOptions)[number]
+export type FinanceTab = (typeof financeTabOptions)[number]
 export type FinanceTransactionTypeFilter =
   (typeof transactionTypeFilterOptions)[number]
 
@@ -35,6 +42,18 @@ export function parsePeriod(
   return periodOptions.includes(value as FinancePeriod)
     ? (value as FinancePeriod)
     : "all"
+}
+
+export function parseFinanceTab(
+  value: string | string[] | undefined
+): FinanceTab {
+  if (typeof value !== "string") {
+    return "transactions"
+  }
+
+  return financeTabOptions.includes(value as FinanceTab)
+    ? (value as FinanceTab)
+    : "transactions"
 }
 
 export function parseTransactionTypeFilter(
@@ -113,7 +132,15 @@ export function getPeriodRange(
   if (period === "month") {
     return {
       from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
-      toExclusive: new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0, 0),
+      toExclusive: new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        1,
+        0,
+        0,
+        0,
+        0
+      ),
     }
   }
 

@@ -6,6 +6,7 @@ import { FinancesPage } from "@/features/finances/components/finances-page"
 import {
   getPeriodRange,
   parseFilterIds,
+  parseFinanceTab,
   parsePeriod,
   parseTransactionTypeFilter,
 } from "@/features/finances/filters"
@@ -20,6 +21,7 @@ type FinancesSearchParams = Promise<{
   accountId?: string | string[]
   categoryId?: string | string[]
   period?: string | string[]
+  tab?: string | string[]
   type?: string | string[]
 }>
 
@@ -33,6 +35,7 @@ export default async function FinancesRoute({
   const existingSettings = await getUserFinanceSettings(user.id)
   const settings =
     existingSettings ?? (await createDefaultFinanceSettings(user.id))
+  const tab = parseFinanceTab(query.tab)
   const period = parsePeriod(query.period)
   const type = parseTransactionTypeFilter(query.type)
   const periodRange = getPeriodRange(period, new Date(), {
@@ -73,8 +76,10 @@ export default async function FinancesRoute({
         accounts={accounts}
         accountBalances={accountBalances}
         categories={categories}
+        financeSettings={settings}
         timezone={settings.timezone}
         transactions={transactions}
+        tab={tab}
         filters={{ accountIds, categoryIds, period, type }}
       />
     </>
