@@ -302,6 +302,20 @@ describe("FinancesPage", () => {
     expect(html).not.toContain("tabler-icon-dots-vertical")
   })
 
+  test("renders category action trigger without child cloning", async () => {
+    const { CategoryActionMenu } =
+      await import("@/features/finances/components/category-management")
+
+    const html = renderToStaticMarkup(
+      <CategoryActionMenu category={category} />
+    )
+
+    expect(html).toContain(`Open ${category.name} actions`)
+    expect(html).toContain(category.name)
+    expect(html).toContain("cursor-pointer")
+    expect(html).toContain(`background-color:${category.color}`)
+  })
+
   test("renders placeholder states for overview and recurring payments", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")

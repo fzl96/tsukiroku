@@ -764,26 +764,7 @@ function CategoryManageGroup({
       <div className="flex flex-wrap gap-2">
         {categories.length ? (
           categories.map((category) => (
-            <CategoryActionMenu key={category.id} category={category}>
-              <button
-                type="button"
-                className="inline-flex h-8 cursor-pointer items-center gap-2 border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase transition-colors hover:bg-accent hover:text-accent-foreground"
-              >
-                {category.color ? (
-                  <span
-                    className="size-2 rounded-full"
-                    style={{ backgroundColor: category.color }}
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <span
-                    className="size-2 rounded-full bg-muted-foreground"
-                    aria-hidden="true"
-                  />
-                )}
-                {category.name}
-              </button>
-            </CategoryActionMenu>
+            <CategoryActionMenu key={category.id} category={category} />
           ))
         ) : (
           <span className="text-sm text-muted-foreground">None yet.</span>

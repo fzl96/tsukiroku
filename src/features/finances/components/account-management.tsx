@@ -358,10 +358,7 @@ function AccountConfirmSheet({
   )
 }
 
-export function AccountCardMenu({
-  account,
-  children,
-}: React.PropsWithChildren<{ account: FinancialAccount }>) {
+export function AccountCardMenu({ account }: { account: FinancialAccount }) {
   const router = useRouter()
   const [archiveOpen, setArchiveOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -396,28 +393,13 @@ export function AccountCardMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          {children ? (
-            React.isValidElement(children) ? (
-              React.cloneElement(
-                children as React.ReactElement<Record<string, unknown>>,
-                {
-                  "aria-label": `Open ${account.name} actions`,
-                }
-              )
-            ) : (
-              <button type="button" aria-label={`Open ${account.name} actions`}>
-                {children}
-              </button>
-            )
-          ) : (
-            <button
-              type="button"
-              className="absolute inset-0 z-10 cursor-pointer text-start focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              aria-label={`Open ${account.name} actions`}
-            >
-              <span className="sr-only">Open {account.name} actions</span>
-            </button>
-          )}
+          <button
+            type="button"
+            className="absolute inset-0 z-10 cursor-pointer text-start focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            aria-label={`Open ${account.name} actions`}
+          >
+            <span className="sr-only">Open {account.name} actions</span>
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>

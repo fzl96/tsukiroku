@@ -320,10 +320,7 @@ function CategoryConfirmSheet({
   )
 }
 
-export function CategoryActionMenu({
-  category,
-  children,
-}: React.PropsWithChildren<{ category: Category }>) {
+export function CategoryActionMenu({ category }: { category: Category }) {
   const router = useRouter()
   const [archiveOpen, setArchiveOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
@@ -359,18 +356,25 @@ export function CategoryActionMenu({
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          {React.isValidElement(children) ? (
-            React.cloneElement(
-              children as React.ReactElement<Record<string, unknown>>,
-              {
-                "aria-label": `Open ${category.name} actions`,
-              }
-            )
-          ) : (
-            <button type="button" aria-label={`Open ${category.name} actions`}>
-              {children}
-            </button>
-          )}
+          <button
+            type="button"
+            className="inline-flex h-8 cursor-pointer items-center gap-2 border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase transition-colors hover:bg-accent hover:text-accent-foreground"
+            aria-label={`Open ${category.name} actions`}
+          >
+            {category.color ? (
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: category.color }}
+                aria-hidden="true"
+              />
+            ) : (
+              <span
+                className="size-2 rounded-full bg-muted-foreground"
+                aria-hidden="true"
+              />
+            )}
+            {category.name}
+          </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           <DropdownMenuItem onSelect={() => setEditOpen(true)}>
