@@ -544,7 +544,7 @@ function TransactionTab({
 }) {
   return (
     <>
-      <section className="space-y-6 border-b border-border py-6">
+      <section className="sticky top-0 z-20 bg-background py-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
             Showing {periodLabels[filters.period]}
@@ -566,21 +566,19 @@ function TransactionTab({
             />
           </div>
         </div>
-        {filters.accountIds.length ? (
+      </section>
+
+      {filters.accountIds.length ? (
+        <section className="pb-6">
           <AccountCards
             accounts={accounts}
             balances={accountBalances}
             selectedAccountIds={filters.accountIds}
           />
-        ) : null}
-      </section>
+        </section>
+      ) : null}
 
       <section className="py-6">
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-            Recent transactions
-          </p>
-        </div>
         {groupedTransactions.length ? (
           <TransactionList
             key={[

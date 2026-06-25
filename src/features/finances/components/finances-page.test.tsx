@@ -147,7 +147,8 @@ describe("FinancesPage", () => {
     expect(html).toContain('href="/finances?tab=transactions"')
     expect(html).toContain('href="/finances?tab=recurring"')
     expect(html).toContain('href="/finances?tab=manage"')
-    expect(html).toContain("Recent transactions")
+    expect(html).toContain("sticky top-0 z-20 bg-background")
+    expect(html).not.toContain("Recent transactions")
   })
 
   test("opens transaction filters from a right-side sheet", async () => {
