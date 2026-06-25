@@ -4,6 +4,7 @@ import { addDays } from "date-fns"
 import type {
   Category,
   FinancialAccount,
+  RecurringPayment,
   Transaction,
   UserFinanceSettings,
 } from "@/db/schema"
@@ -26,6 +27,10 @@ import {
   toggleFilterId,
   transactionTypeFilterOptions,
 } from "@/features/finances/filters"
+import {
+  NewRecurringPaymentButton,
+  RecurringPaymentActionButtons,
+} from "@/features/recurring-payments/components/recurring-payment-controls"
 import {
   Sheet,
   SheetContent,
@@ -54,6 +59,7 @@ type FinancesPageProps = {
     UserFinanceSettings,
     "baseCurrency" | "monthStartDay" | "timezone" | "weekStartsOn"
   >
+  recurringPayments?: RecurringPayment[]
   tab: FinanceTab
   timezone: string
   transactions: Transaction[]
@@ -84,6 +90,20 @@ const tabLabels: Record<FinanceTab, string> = {
   transactions: "Transactions",
   recurring: "Recurring Payments",
   manage: "Manage",
+}
+
+const frequencyLabels: Record<RecurringPayment["frequency"], string> = {
+  DAILY: "Daily",
+  WEEKLY: "Weekly",
+  MONTHLY: "Monthly",
+  YEARLY: "Yearly",
+}
+
+const statusLabels: Record<RecurringPayment["status"], string> = {
+  ACTIVE: "Active",
+  PAUSED: "Paused",
+  CANCELED: "Canceled",
+  ENDED: "Ended",
 }
 
 const weekStartLabels = [
@@ -749,6 +769,147 @@ function ManageTab({
   )
 }
 
+function formatRecurringCadence(recurringPayment: RecurringPayment) {
+  const label = frequencyLabels[recurringPayment.frequency]
+
+  if (recurringPayment.intervalCount === 1) {
+    return label
+  }
+
+  return `Every ${recurringPayment.intervalCount} ${label.toLowerCase()} periods`
+}
+
+function RecurringPaymentsTab({
+  accounts,
+  categories,
+  recurringPayments,
+  timezone,
+}: {
+  accounts: FinancialAccount[]
+  categories: Category[]
+  recurringPayments: RecurringPayment[]
+  timezone: string
+}) {
+  const accountById = new Map(accounts.map((account) => [account.id, account]))
+  const categoryById = new Map(
+    categories.map((category) => [category.id, category])
+  )
+  const activeCount = recurringPayments.filter(
+    (payment) => payment.status === "ACTIVE"
+  ).length
+  const nextPayment = recurringPayments.find(
+    (payment) => payment.status === "ACTIVE"
+  )
+
+  return (
+    <section className="space-y-6 py-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Scheduled templates
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">Recurring payments</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+            Track subscriptions, bills, and repeating income before they become
+            ledger entries.
+          </p>
+        </div>
+        <NewRecurringPaymentButton
+          accounts={accounts}
+          categories={categories}
+          timezone={timezone}
+        />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="border border-border p-4">
+          <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+            Active
+          </p>
+          <p className="mt-3 font-heading text-3xl leading-none tracking-tight">
+            {activeCount}
+          </p>
+        </div>
+        <div className="border border-border p-4 md:col-span-2">
+          <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+            Next due
+          </p>
+          <p className="mt-3 text-lg">
+            {nextPayment
+              ? `${nextPayment.name} / ${formatDateForUser(
+                  nextPayment.nextDueDate,
+                  timezone
+                )}`
+              : "No active recurring payments"}
+          </p>
+        </div>
+      </div>
+
+      <div className="border-y border-border">
+        {recurringPayments.length ? (
+          recurringPayments.map((payment) => {
+            const account = accountById.get(payment.accountId)
+            const category = payment.categoryId
+              ? categoryById.get(payment.categoryId)
+              : null
+
+            return (
+              <article
+                key={payment.id}
+                className="grid gap-4 border-b border-border py-5 last:border-b-0 lg:grid-cols-[1fr_auto] lg:items-start"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+                    <span>{statusLabels[payment.status]}</span>
+                    <span aria-hidden="true">/</span>
+                    <span>{formatRecurringCadence(payment)}</span>
+                    <span aria-hidden="true">/</span>
+                    <span>{payment.type.toLowerCase()}</span>
+                  </div>
+                  <h3 className="mt-2 text-xl leading-7">{payment.name}</h3>
+                  <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                    <span>{payment.merchant ?? "No merchant"}</span>
+                    <span>{account?.name ?? "Unknown account"}</span>
+                    <span>{category?.name ?? "Uncategorized"}</span>
+                  </div>
+                  {payment.note ? (
+                    <p className="mt-3 max-w-2xl text-sm leading-6 text-muted-foreground">
+                      {payment.note}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="space-y-3 lg:min-w-52 lg:text-right">
+                  <p className="font-heading text-2xl leading-none tracking-tight">
+                    {formatCurrency(
+                      payment.amount,
+                      payment.currency,
+                      payment.type
+                    )}
+                  </p>
+                  <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+                    Next due {formatDateForUser(payment.nextDueDate, timezone)}
+                  </p>
+                  <div className="lg:flex lg:justify-end">
+                    <RecurringPaymentActionButtons recurringPayment={payment} />
+                  </div>
+                </div>
+              </article>
+            )
+          })
+        ) : (
+          <div className="py-12">
+            <p className="text-lg">No recurring payments yet.</p>
+            <p className="mt-2 font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+              Add a repeating bill, subscription, or income source.
+            </p>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
 function CategoryManageGroup({
   categories,
   label,
@@ -790,6 +951,7 @@ export function FinancesPage({
   accounts,
   categories,
   financeSettings,
+  recurringPayments = [],
   tab,
   timezone,
   transactions,
@@ -823,7 +985,9 @@ export function FinancesPage({
             <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
               {tab === "manage"
                 ? "Manage"
-                : `${transactions.length} transactions`}
+                : tab === "recurring"
+                  ? `${recurringPayments.length} recurring`
+                  : `${transactions.length} transactions`}
             </p>
           </div>
         </header>
@@ -851,9 +1015,11 @@ export function FinancesPage({
         ) : null}
 
         {tab === "recurring" ? (
-          <PlaceholderPanel
-            title="Recurring payments are coming next."
-            description="This tab will manage scheduled transaction templates separately from reference data."
+          <RecurringPaymentsTab
+            accounts={accounts}
+            categories={categories}
+            recurringPayments={recurringPayments}
+            timezone={timezone}
           />
         ) : null}
 

@@ -14,6 +14,7 @@ import {
   createDefaultFinanceSettings,
   getUserFinanceSettings,
 } from "@/features/settings/service"
+import { listRecurringPayments } from "@/features/recurring-payments/queries"
 import { listTransactions } from "@/features/transactions/queries"
 import { requireUser } from "@/lib/auth"
 
@@ -53,14 +54,17 @@ export default async function FinancesRoute({
     ...(type !== "all" ? { type } : {}),
   }
 
-  const [accounts, categories, transactions] = await Promise.all([
-    listFinancialAccounts(user.id),
-    listCategories(user.id),
-    listTransactions(user.id, transactionFilters),
-  ])
-  const accountBalances = await Promise.all(
-    accounts.map((account) => getAccountBalance(user.id, account.id))
-  )
+  const accounts = await listFinancialAccounts(user.id)
+  const categories = await listCategories(user.id)
+  const recurringPayments = await listRecurringPayments(user.id, {
+    includeInactive: true,
+  })
+  const transactions = await listTransactions(user.id, transactionFilters)
+  const accountBalances = []
+
+  for (const account of accounts) {
+    accountBalances.push(await getAccountBalance(user.id, account.id))
+  }
 
   return (
     <>
@@ -77,6 +81,7 @@ export default async function FinancesRoute({
         accountBalances={accountBalances}
         categories={categories}
         financeSettings={settings}
+        recurringPayments={recurringPayments}
         timezone={settings.timezone}
         transactions={transactions}
         tab={tab}

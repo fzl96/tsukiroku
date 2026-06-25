@@ -2,7 +2,12 @@ import { describe, expect, mock, test } from "bun:test"
 import * as React from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 
-import type { Category, FinancialAccount, Transaction } from "@/db/schema"
+import type {
+  Category,
+  FinancialAccount,
+  RecurringPayment,
+  Transaction,
+} from "@/db/schema"
 
 mock.module("next/link", () => ({
   default: ({
@@ -92,6 +97,13 @@ const category = {
   kind: "INCOME",
 } as Category
 
+const expenseCategory = {
+  id: "category_2",
+  name: "Software",
+  color: "#9333ea",
+  kind: "EXPENSE",
+} as Category
+
 const transaction = {
   id: "transaction_1",
   accountId: account.id,
@@ -112,6 +124,28 @@ const transaction = {
   updatedAt: new Date("2026-06-20T00:00:00.000Z"),
   userId: "user_1",
 } as Transaction
+
+const recurringPayment = {
+  id: "recurring_1",
+  accountId: account.id,
+  amount: "19.99",
+  categoryId: expenseCategory.id,
+  createdAt: new Date("2026-06-01T00:00:00.000Z"),
+  currency: "USD",
+  endDate: null,
+  frequency: "MONTHLY",
+  intervalCount: 1,
+  lastRecordedAt: null,
+  merchant: "Figma",
+  name: "Figma subscription",
+  nextDueDate: new Date("2026-07-01T00:00:00.000Z"),
+  note: "Design tools",
+  startDate: new Date("2026-06-01T00:00:00.000Z"),
+  status: "ACTIVE",
+  type: "EXPENSE",
+  updatedAt: new Date("2026-06-01T00:00:00.000Z"),
+  userId: "user_1",
+} as RecurringPayment
 
 describe("FinancesPage", () => {
   test("renders four query-param tabs and defaults to transactions", async () => {
@@ -232,7 +266,7 @@ describe("FinancesPage", () => {
           { accountId: account.id, amount: "1100", currency: "USD" },
         ]}
         accounts={[account]}
-        categories={[category]}
+        categories={[category, expenseCategory]}
         financeSettings={{
           baseCurrency: "USD",
           monthStartDay: 1,
@@ -316,40 +350,80 @@ describe("FinancesPage", () => {
     expect(html).toContain(`background-color:${category.color}`)
   })
 
-  test("renders placeholder states for overview and recurring payments", async () => {
+  test("renders placeholder state for overview", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")
 
-    const renderPage = (tab: "overview" | "recurring") =>
-      renderToStaticMarkup(
-        <FinancesPage
-          accountBalances={[
-            { accountId: account.id, amount: "1100", currency: "USD" },
-          ]}
-          accounts={[account]}
-          categories={[category]}
-          financeSettings={{
-            baseCurrency: "USD",
-            monthStartDay: 1,
-            timezone: "UTC",
-            weekStartsOn: 1,
-          }}
-          filters={{
-            accountIds: [],
-            categoryIds: [],
-            period: "all",
-            type: "all",
-          }}
-          tab={tab}
-          timezone="UTC"
-          transactions={[transaction]}
-        />
-      )
-
-    expect(renderPage("overview")).toContain("Overview is coming next.")
-    expect(renderPage("recurring")).toContain(
-      "Recurring payments are coming next."
+    const html = renderToStaticMarkup(
+      <FinancesPage
+        accountBalances={[
+          { accountId: account.id, amount: "1100", currency: "USD" },
+        ]}
+        accounts={[account]}
+        categories={[category]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
+        filters={{
+          accountIds: [],
+          categoryIds: [],
+          period: "all",
+          type: "all",
+        }}
+        tab="overview"
+        timezone="UTC"
+        transactions={[transaction]}
+      />
     )
+
+    expect(html).toContain("Overview is coming next.")
+  })
+
+  test("renders recurring payments with controls", async () => {
+    const { FinancesPage } =
+      await import("@/features/finances/components/finances-page")
+
+    const html = renderToStaticMarkup(
+      <FinancesPage
+        accountBalances={[
+          { accountId: account.id, amount: "1100", currency: "USD" },
+        ]}
+        accounts={[account]}
+        categories={[category, expenseCategory]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
+        filters={{
+          accountIds: [],
+          categoryIds: [],
+          period: "all",
+          type: "all",
+        }}
+        recurringPayments={[recurringPayment]}
+        tab="recurring"
+        timezone="UTC"
+        transactions={[transaction]}
+      />
+    )
+
+    expect(html).toContain("+ New Recurring Payment")
+    expect(html).toContain("Figma subscription")
+    expect(html).toContain("Figma")
+    expect(html).toContain("Checking")
+    expect(html).toContain("Software")
+    expect(html).toContain("Monthly")
+    expect(html).toContain("Next due")
+    expect(html).toContain("-USD 19.99")
+    expect(html).toContain("Record now")
+    expect(html).toContain("Pause")
+    expect(html).toContain("Cancel")
+    expect(html).not.toContain("Recurring payments are coming next.")
   })
 
   test("sizes the transaction drawer from its usage and keeps header and actions sticky", async () => {

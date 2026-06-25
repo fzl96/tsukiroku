@@ -13,11 +13,16 @@ import {
 import { actionData, actionError } from "@/lib/action-result"
 import { requireUser } from "@/lib/auth"
 
+function revalidateRecurringPaymentViews() {
+  revalidatePath("/dashboard")
+  revalidatePath("/finances")
+}
+
 export async function createRecurringPaymentAction(input: unknown) {
   try {
     const user = await requireUser()
     const recurringPayment = await createRecurringPayment(user.id, input)
-    revalidatePath("/dashboard")
+    revalidateRecurringPaymentViews()
     return actionData(recurringPayment)
   } catch (error) {
     return actionError(error)
@@ -26,16 +31,16 @@ export async function createRecurringPaymentAction(input: unknown) {
 
 export async function updateRecurringPaymentAction(
   recurringPaymentId: string,
-  input: unknown,
+  input: unknown
 ) {
   try {
     const user = await requireUser()
     const recurringPayment = await updateRecurringPayment(
       user.id,
       recurringPaymentId,
-      input,
+      input
     )
-    revalidatePath("/dashboard")
+    revalidateRecurringPaymentViews()
     return actionData(recurringPayment)
   } catch (error) {
     return actionError(error)
@@ -47,9 +52,9 @@ export async function pauseRecurringPaymentAction(recurringPaymentId: string) {
     const user = await requireUser()
     const recurringPayment = await pauseRecurringPayment(
       user.id,
-      recurringPaymentId,
+      recurringPaymentId
     )
-    revalidatePath("/dashboard")
+    revalidateRecurringPaymentViews()
     return actionData(recurringPayment)
   } catch (error) {
     return actionError(error)
@@ -61,9 +66,9 @@ export async function cancelRecurringPaymentAction(recurringPaymentId: string) {
     const user = await requireUser()
     const recurringPayment = await cancelRecurringPayment(
       user.id,
-      recurringPaymentId,
+      recurringPaymentId
     )
-    revalidatePath("/dashboard")
+    revalidateRecurringPaymentViews()
     return actionData(recurringPayment)
   } catch (error) {
     return actionError(error)
@@ -74,7 +79,7 @@ export async function deleteRecurringPaymentAction(recurringPaymentId: string) {
   try {
     const user = await requireUser()
     await deleteRecurringPayment(user.id, recurringPaymentId)
-    revalidatePath("/dashboard")
+    revalidateRecurringPaymentViews()
     return actionData({ success: true })
   } catch (error) {
     return actionError(error)
@@ -83,16 +88,16 @@ export async function deleteRecurringPaymentAction(recurringPaymentId: string) {
 
 export async function recordRecurringPaymentAction(
   recurringPaymentId: string,
-  options?: unknown,
+  options?: unknown
 ) {
   try {
     const user = await requireUser()
     const result = await recordRecurringPayment(
       user.id,
       recurringPaymentId,
-      options,
+      options
     )
-    revalidatePath("/dashboard")
+    revalidateRecurringPaymentViews()
     return actionData(result)
   } catch (error) {
     return actionError(error)
