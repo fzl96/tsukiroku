@@ -21,6 +21,35 @@ export type CashflowBucket = {
   expenseAmount: string
 }
 
+export type NetWorthSummary = {
+  amount: string
+  baseAccountCount: number
+  otherCurrencyCount: number
+}
+
+export type MonthStatement = {
+  income: string
+  expense: string
+  net: string
+  savingsRate: number | null
+  expenseRatio: number
+  overspent: boolean
+}
+
+export type ExpenseBreakdownItem = {
+  categoryId: string
+  name: string
+  color: string | null
+  amount: string
+  share: number
+  transactionCount: number
+}
+
+export type ExpenseBreakdown = {
+  items: ExpenseBreakdownItem[]
+  total: string
+}
+
 export type MonthOverviewStats = {
   totalIncome: string
   totalExpense: string
@@ -272,5 +301,125 @@ export function getMonthOverviewStats(
     transactionCount: postedTransactions.length,
     highestExpense,
     topExpenseCategory,
+  }
+}
+
+export function getNetWorthSummary(
+  balances: readonly { amount: string; currency: string }[],
+  baseCurrency: string
+): NetWorthSummary {
+  let total = new Decimal(0)
+  let baseAccountCount = 0
+  let otherCurrencyCount = 0
+
+  for (const balance of balances) {
+    if (balance.currency === baseCurrency) {
+      total = total.plus(balance.amount)
+      baseAccountCount += 1
+    } else {
+      otherCurrencyCount += 1
+    }
+  }
+
+  return {
+    amount: formatMoney(total),
+    baseAccountCount,
+    otherCurrencyCount,
+  }
+}
+
+export function getMonthStatement(
+  stats: Pick<
+    MonthOverviewStats,
+    "totalIncome" | "totalExpense" | "netCashflow"
+  >
+): MonthStatement {
+  const income = new Decimal(stats.totalIncome)
+  const expense = new Decimal(stats.totalExpense)
+  const net = new Decimal(stats.netCashflow)
+  const hasIncome = income.gt(0)
+
+  return {
+    income: stats.totalIncome,
+    expense: stats.totalExpense,
+    net: stats.netCashflow,
+    savingsRate: hasIncome
+      ? net.dividedBy(income).times(100).toDecimalPlaces(1).toNumber()
+      : null,
+    expenseRatio: hasIncome
+      ? Decimal.min(expense.dividedBy(income), new Decimal(1)).toNumber()
+      : 0,
+    overspent: expense.gt(income),
+  }
+}
+
+export function getMonthExpenseBreakdown(
+  transactions: readonly Transaction[],
+  categories: readonly Category[],
+  now: Date,
+  options: {
+    monthStartDay: number
+    timezone: string
+  }
+): ExpenseBreakdown {
+  const range = getZonedMonthRange(now, options.timezone, options.monthStartDay)
+  const categoryById = new Map(
+    categories.map((category) => [category.id, category])
+  )
+  const totals = new Map<
+    string,
+    {
+      categoryId: string
+      name: string
+      color: string | null
+      amount: Decimal
+      transactionCount: number
+    }
+  >()
+  let total = new Decimal(0)
+
+  for (const transaction of transactions) {
+    if (
+      transaction.status !== "POSTED" ||
+      transaction.type !== "EXPENSE" ||
+      !isInRange(transaction.occurredAt, range.startUtc, range.endUtc)
+    ) {
+      continue
+    }
+
+    const amount = new Decimal(transaction.amount)
+    total = total.plus(amount)
+
+    const category = transaction.categoryId
+      ? categoryById.get(transaction.categoryId)
+      : null
+    const key = category?.id ?? "uncategorized"
+    const entry = totals.get(key) ?? {
+      categoryId: key,
+      name: category?.name ?? "Uncategorized",
+      color: category?.color ?? null,
+      amount: new Decimal(0),
+      transactionCount: 0,
+    }
+
+    entry.amount = entry.amount.plus(amount)
+    entry.transactionCount += 1
+    totals.set(key, entry)
+  }
+
+  const items = [...totals.values()]
+    .sort((left, right) => right.amount.comparedTo(left.amount))
+    .map((entry) => ({
+      categoryId: entry.categoryId,
+      name: entry.name,
+      color: entry.color,
+      amount: formatMoney(entry.amount),
+      share: total.gt(0) ? entry.amount.dividedBy(total).toNumber() : 0,
+      transactionCount: entry.transactionCount,
+    }))
+
+  return {
+    items,
+    total: formatMoney(total),
   }
 }

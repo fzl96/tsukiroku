@@ -32,7 +32,11 @@ import {
 import {
   buildMonthlyCashflowBuckets,
   buildWeeklyCashflowBuckets,
+  getMonthExpenseBreakdown,
   getMonthOverviewStats,
+  getMonthStatement,
+  getNetWorthSummary,
+  type ExpenseBreakdownItem,
 } from "@/features/finances/overview"
 import {
   NewRecurringPaymentButton,
@@ -546,27 +550,291 @@ function TransactionFilterButton({
   )
 }
 
-function OverviewMetric({
+function formatShare(share: number) {
+  if (share <= 0) {
+    return "0%"
+  }
+
+  const percent = share * 100
+
+  if (percent < 1) {
+    return "<1%"
+  }
+
+  return `${Math.round(percent)}%`
+}
+
+function NetWorthMasthead({
+  amount,
+  baseAccountCount,
+  baseCurrency,
+  otherCurrencyCount,
+}: {
+  amount: string
+  baseAccountCount: number
+  baseCurrency: string
+  otherCurrencyCount: number
+}) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-border pb-7">
+      <div>
+        <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+          Net worth
+        </p>
+        <p className="mt-3 font-heading text-5xl leading-none tracking-tight sm:text-6xl">
+          {formatCurrencyAmount(amount, baseCurrency)}
+        </p>
+      </div>
+      <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+        {baseAccountCount} account{baseAccountCount === 1 ? "" : "s"} in{" "}
+        {baseCurrency}
+        {otherCurrencyCount
+          ? ` · ${otherCurrencyCount} held in other currencies`
+          : ""}
+      </p>
+    </div>
+  )
+}
+
+function MonthStatementFigure({
   label,
   value,
-  detail,
 }: {
   label: string
   value: string
-  detail?: string
 }) {
   return (
-    <article className="border border-border p-4">
+    <div className="flex-1 px-5 py-4 first:pl-0 sm:border-l sm:border-border sm:first:border-l-0">
       <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
         {label}
       </p>
-      <p className="mt-3 font-heading text-3xl leading-none tracking-tight">
+      <p className="mt-2 font-heading text-2xl leading-none tracking-tight">
         {value}
       </p>
-      {detail ? (
-        <p className="mt-3 text-sm leading-6 text-muted-foreground">{detail}</p>
-      ) : null}
-    </article>
+    </div>
+  )
+}
+
+function MonthStatement({
+  baseCurrency,
+  statement,
+}: {
+  baseCurrency: string
+  statement: ReturnType<typeof getMonthStatement>
+}) {
+  const hasIncome = statement.savingsRate !== null
+  const positive = (statement.savingsRate ?? 0) >= 0
+  const caption = !hasIncome
+    ? "No income recorded this month yet."
+    : statement.overspent
+      ? `You spent ${Math.abs(
+          Math.round(statement.savingsRate ?? 0)
+        )}% more than you earned this month.`
+      : `You kept ${formatShare(
+          (statement.savingsRate ?? 0) / 100
+        )} of what you earned this month.`
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            This month / statement
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">In, out, and kept</h2>
+        </div>
+        {hasIncome ? (
+          <span className="inline-flex h-7 items-center border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase">
+            {positive ? "Saved" : "Overspent"}{" "}
+            {Math.abs(statement.savingsRate ?? 0)}%
+          </span>
+        ) : null}
+      </div>
+
+      <div className="border-y border-border">
+        <div className="flex flex-col sm:flex-row">
+          <MonthStatementFigure
+            label="Money in"
+            value={formatCurrencyAmount(statement.income, baseCurrency)}
+          />
+          <MonthStatementFigure
+            label="Money out"
+            value={formatExpenseCurrency(statement.expense, baseCurrency)}
+          />
+          <MonthStatementFigure
+            label="Kept"
+            value={formatCurrencyAmount(statement.net, baseCurrency)}
+          />
+        </div>
+      </div>
+
+      <div>
+        <div
+          className="flex h-3 w-full overflow-hidden border border-border"
+          role="img"
+          aria-label={caption}
+        >
+          {hasIncome ? (
+            <>
+              <div
+                className="h-full bg-foreground"
+                style={{ width: `${statement.expenseRatio * 100}%` }}
+              />
+              {!statement.overspent ? (
+                <div className="h-full flex-1 bg-foreground opacity-20" />
+              ) : null}
+            </>
+          ) : (
+            <div className="h-full w-full bg-muted" />
+          )}
+        </div>
+        <p className="mt-2 text-sm leading-6 text-muted-foreground">
+          {caption}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+function ExpenseBreakdownRow({
+  baseCurrency,
+  item,
+}: {
+  baseCurrency: string
+  item: ExpenseBreakdownItem
+}) {
+  return (
+    <div className="border-b border-border py-3 last:border-b-0">
+      <div className="flex items-baseline justify-between gap-4">
+        <span className="flex min-w-0 items-center gap-2">
+          <span
+            className="size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: item.color ?? "var(--muted-foreground)" }}
+            aria-hidden="true"
+          />
+          <span className="truncate text-sm">{item.name}</span>
+        </span>
+        <span className="flex shrink-0 items-baseline gap-3">
+          <span className="font-mono text-[11px] tracking-[0.14em] text-muted-foreground tabular-nums">
+            {formatShare(item.share)}
+          </span>
+          <span className="font-heading text-base leading-none tracking-tight">
+            {formatExpenseCurrency(item.amount, baseCurrency)}
+          </span>
+        </span>
+      </div>
+      <div className="mt-2 h-1 w-full bg-muted">
+        <div
+          className="h-full bg-foreground"
+          style={{ width: `${Math.max(item.share * 100, 1.5)}%` }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ExpenseBreakdownPanel({
+  baseCurrency,
+  breakdown,
+}: {
+  baseCurrency: string
+  breakdown: ReturnType<typeof getMonthExpenseBreakdown>
+}) {
+  const visible = breakdown.items.slice(0, 6)
+  const remaining = breakdown.items.length - visible.length
+
+  return (
+    <div className="flex h-full flex-col border border-border p-4">
+      <div className="flex items-end justify-between gap-4 border-b border-border pb-3">
+        <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+          Where it went
+        </p>
+        <p className="font-heading text-lg leading-none tracking-tight">
+          {formatExpenseCurrency(breakdown.total, baseCurrency)}
+        </p>
+      </div>
+      {visible.length ? (
+        <div className="mt-1">
+          {visible.map((item) => (
+            <ExpenseBreakdownRow
+              key={item.categoryId}
+              baseCurrency={baseCurrency}
+              item={item}
+            />
+          ))}
+          {remaining > 0 ? (
+            <p className="pt-3 font-mono text-[11px] tracking-[0.14em] text-muted-foreground uppercase">
+              + {remaining} more categor{remaining === 1 ? "y" : "ies"}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <p className="mt-6 text-sm text-muted-foreground">
+          No expenses recorded this month.
+        </p>
+      )}
+    </div>
+  )
+}
+
+function NotableSignals({
+  baseCurrency,
+  monthStats,
+}: {
+  baseCurrency: string
+  monthStats: ReturnType<typeof getMonthOverviewStats>
+}) {
+  const rows = [
+    {
+      label: "Largest single expense",
+      value: monthStats.highestExpense
+        ? formatExpenseCurrency(
+            monthStats.highestExpense.amount,
+            monthStats.highestExpense.currency
+          )
+        : "None",
+      detail: monthStats.highestExpense
+        ? `${monthStats.highestExpense.label} · ${monthStats.highestExpense.categoryName}`
+        : "No expenses this month.",
+    },
+    {
+      label: "Top expense category",
+      value: monthStats.topExpenseCategory?.categoryName ?? "None",
+      detail: monthStats.topExpenseCategory
+        ? `${formatExpenseCurrency(
+            monthStats.topExpenseCategory.amount,
+            monthStats.topExpenseCategory.currency
+          )} · ${monthStats.topExpenseCategory.transactionCount} entr${
+            monthStats.topExpenseCategory.transactionCount === 1 ? "y" : "ies"
+          }`
+        : "Nothing categorized yet.",
+    },
+    {
+      label: "Posted entries",
+      value: String(monthStats.transactionCount),
+      detail: `Recorded in ${baseCurrency} this month.`,
+    },
+  ]
+
+  return (
+    <div className="grid border-y border-border sm:grid-cols-3">
+      {rows.map((row) => (
+        <div
+          key={row.label}
+          className="border-b border-border px-5 py-4 first:pl-0 last:border-b-0 sm:border-b-0 sm:border-l sm:border-border sm:first:border-l-0"
+        >
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            {row.label}
+          </p>
+          <p className="mt-2 truncate font-heading text-xl leading-none tracking-tight">
+            {row.value}
+          </p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            {row.detail}
+          </p>
+        </div>
+      ))}
+    </div>
   )
 }
 
@@ -611,24 +879,36 @@ function OverviewTab({
       timezone: financeSettings.timezone,
     }
   )
+  const statement = getMonthStatement(monthStats)
+  const netWorth = getNetWorthSummary(
+    accountBalances,
+    financeSettings.baseCurrency
+  )
+  const expenseBreakdown = getMonthExpenseBreakdown(
+    baseCurrencyTransactions,
+    categories,
+    now,
+    {
+      monthStartDay: financeSettings.monthStartDay,
+      timezone: financeSettings.timezone,
+    }
+  )
 
   return (
-    <section className="space-y-8 py-6">
-      <div className="space-y-4">
-        <div>
-          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-            Current balance
-          </p>
-          <h2 className="mt-2 text-2xl leading-8">All accounts</h2>
-        </div>
-        <AccountCards
-          accounts={accounts}
-          balances={accountBalances}
-          selectedAccountIds={[]}
-        />
-      </div>
+    <section className="space-y-10 py-6">
+      <NetWorthMasthead
+        amount={netWorth.amount}
+        baseAccountCount={netWorth.baseAccountCount}
+        baseCurrency={financeSettings.baseCurrency}
+        otherCurrencyCount={netWorth.otherCurrencyCount}
+      />
 
-      <div className="grid gap-6 lg:grid-cols-[1.45fr_0.55fr]">
+      <MonthStatement
+        baseCurrency={financeSettings.baseCurrency}
+        statement={statement}
+      />
+
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-4 border border-border p-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -636,9 +916,6 @@ function OverviewTab({
                 Cashflow
               </p>
               <h2 className="mt-2 text-2xl leading-8">Income and expenses</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Values use {financeSettings.baseCurrency} transactions.
-              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               {(["monthly", "daily"] as const).map((period) => (
@@ -659,80 +936,32 @@ function OverviewTab({
           />
         </div>
 
-        <div className="space-y-4">
-          <OverviewMetric
-            label="Highest expense this month"
-            value={
-              monthStats.highestExpense
-                ? formatExpenseCurrency(
-                    monthStats.highestExpense.amount,
-                    monthStats.highestExpense.currency
-                  )
-                : "None"
-            }
-            detail={
-              monthStats.highestExpense
-                ? `${monthStats.highestExpense.label} / ${monthStats.highestExpense.categoryName}`
-                : "No expenses this month."
-            }
-          />
-          <OverviewMetric
-            label="Transactions this month"
-            value={String(monthStats.transactionCount)}
-            detail={`Posted entries in ${financeSettings.baseCurrency}.`}
-          />
-        </div>
+        <ExpenseBreakdownPanel
+          baseCurrency={financeSettings.baseCurrency}
+          breakdown={expenseBreakdown}
+        />
       </div>
 
       <div className="space-y-4">
-        <div>
-          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-            Suggested overview data
-          </p>
-          <h2 className="mt-2 text-2xl leading-8">Month-to-date signals</h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+              Accounts
+            </p>
+            <h2 className="mt-2 text-2xl leading-8">Where it sits</h2>
+          </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-          <OverviewMetric
-            label="Total income"
-            value={formatCurrencyAmount(
-              monthStats.totalIncome,
-              financeSettings.baseCurrency
-            )}
-          />
-          <OverviewMetric
-            label="Total expenses"
-            value={formatExpenseCurrency(
-              monthStats.totalExpense,
-              financeSettings.baseCurrency
-            )}
-          />
-          <OverviewMetric
-            label="Net cashflow"
-            value={formatCurrencyAmount(
-              monthStats.netCashflow,
-              financeSettings.baseCurrency
-            )}
-          />
-          <OverviewMetric
-            label="Top expense category"
-            value={monthStats.topExpenseCategory?.categoryName ?? "None"}
-            detail={
-              monthStats.topExpenseCategory
-                ? `${formatExpenseCurrency(
-                    monthStats.topExpenseCategory.amount,
-                    monthStats.topExpenseCategory.currency
-                  )} across ${
-                    monthStats.topExpenseCategory.transactionCount
-                  } transaction${
-                    monthStats.topExpenseCategory.transactionCount === 1
-                      ? ""
-                      : "s"
-                  }`
-                : "No categorized expenses this month."
-            }
-          />
-        </div>
+        <AccountCards
+          accounts={accounts}
+          balances={accountBalances}
+          selectedAccountIds={[]}
+        />
       </div>
+
+      <NotableSignals
+        baseCurrency={financeSettings.baseCurrency}
+        monthStats={monthStats}
+      />
     </section>
   )
 }

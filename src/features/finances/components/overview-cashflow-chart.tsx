@@ -21,11 +21,11 @@ import { formatCurrencyAmount } from "@/lib/money"
 const chartConfig = {
   income: {
     label: "Income",
-    color: "var(--chart-2)",
+    color: "var(--money-in)",
   },
   expense: {
     label: "Expense",
-    color: "var(--chart-1)",
+    color: "var(--money-out)",
   },
 } satisfies ChartConfig
 
@@ -96,16 +96,8 @@ export function OverviewCashflowChart({
             />
           }
         />
-        <Bar
-          dataKey="income"
-          fill="var(--color-income)"
-          radius={[4, 4, 0, 0]}
-        />
-        <Bar
-          dataKey="expense"
-          fill="var(--color-expense)"
-          radius={[0, 0, 4, 4]}
-        />
+        <Bar dataKey="income" fill="var(--color-income)" radius={0} />
+        <Bar dataKey="expense" fill="var(--color-expense)" radius={0} />
       </BarChart>
     </ChartContainer>
   )

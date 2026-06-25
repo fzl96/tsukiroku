@@ -5,7 +5,10 @@ import type { Category, Transaction } from "@/db/schema"
 import {
   buildMonthlyCashflowBuckets,
   buildWeeklyCashflowBuckets,
+  getMonthExpenseBreakdown,
   getMonthOverviewStats,
+  getMonthStatement,
+  getNetWorthSummary,
 } from "./overview"
 
 const salaryCategory = {
@@ -237,6 +240,124 @@ describe("finance overview helpers", () => {
         currency: "USD",
         transactionCount: 1,
       },
+    })
+  })
+
+  test("sums net worth for base-currency accounts only", () => {
+    const summary = getNetWorthSummary(
+      [
+        { amount: "1500.00", currency: "USD" },
+        { amount: "2200.50", currency: "USD" },
+        { amount: "9000.00", currency: "JPY" },
+      ],
+      "USD"
+    )
+
+    expect(summary).toEqual({
+      amount: "3700.50",
+      baseAccountCount: 2,
+      otherCurrencyCount: 1,
+    })
+  })
+
+  test("derives a savings-rate statement when income exists", () => {
+    const statement = getMonthStatement({
+      totalIncome: "1000.00",
+      totalExpense: "375.00",
+      netCashflow: "625.00",
+    })
+
+    expect(statement).toEqual({
+      income: "1000.00",
+      expense: "375.00",
+      net: "625.00",
+      savingsRate: 62.5,
+      expenseRatio: 0.375,
+      overspent: false,
+    })
+  })
+
+  test("flags overspending and clamps the expense ratio", () => {
+    const statement = getMonthStatement({
+      totalIncome: "1000.00",
+      totalExpense: "1400.00",
+      netCashflow: "-400.00",
+    })
+
+    expect(statement.overspent).toBe(true)
+    expect(statement.expenseRatio).toBe(1)
+    expect(statement.savingsRate).toBe(-40)
+  })
+
+  test("returns no savings rate when there is no income", () => {
+    const statement = getMonthStatement({
+      totalIncome: "0.00",
+      totalExpense: "120.00",
+      netCashflow: "-120.00",
+    })
+
+    expect(statement.savingsRate).toBeNull()
+    expect(statement.expenseRatio).toBe(0)
+  })
+
+  test("breaks down month expenses by category share", () => {
+    const breakdown = getMonthExpenseBreakdown(
+      [
+        transactionFixture({
+          id: "rent",
+          amount: "300.00",
+          categoryId: housingCategory.id,
+          occurredAt: new Date("2026-06-08T10:00:00.000Z"),
+          type: "EXPENSE",
+        }),
+        transactionFixture({
+          id: "tools",
+          amount: "75.00",
+          categoryId: softwareCategory.id,
+          occurredAt: new Date("2026-06-12T10:00:00.000Z"),
+          type: "EXPENSE",
+        }),
+        transactionFixture({
+          id: "uncategorized",
+          amount: "25.00",
+          occurredAt: new Date("2026-06-13T10:00:00.000Z"),
+          type: "EXPENSE",
+        }),
+        transactionFixture({
+          id: "income",
+          amount: "1000.00",
+          categoryId: salaryCategory.id,
+          occurredAt: new Date("2026-06-05T10:00:00.000Z"),
+          type: "INCOME",
+        }),
+        transactionFixture({
+          id: "last_month",
+          amount: "500.00",
+          categoryId: housingCategory.id,
+          occurredAt: new Date("2026-05-20T10:00:00.000Z"),
+          type: "EXPENSE",
+        }),
+      ],
+      [salaryCategory, housingCategory, softwareCategory],
+      new Date("2026-06-25T00:00:00.000Z"),
+      { monthStartDay: 1, timezone: "UTC" }
+    )
+
+    expect(breakdown.total).toBe("400.00")
+    expect(breakdown.items).toHaveLength(3)
+    expect(breakdown.items[0]).toMatchObject({
+      categoryId: housingCategory.id,
+      name: "Housing",
+      color: "#dc2626",
+      amount: "300.00",
+      share: 0.75,
+      transactionCount: 1,
+    })
+    expect(breakdown.items[2]).toMatchObject({
+      categoryId: "uncategorized",
+      name: "Uncategorized",
+      color: null,
+      amount: "25.00",
     })
   })
 })

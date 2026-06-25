@@ -188,7 +188,7 @@ describe("FinancesPage", () => {
       />
     )
 
-    expect(html).toContain("Current balance")
+    expect(html).toContain("Net worth")
     expect(html).toContain("Checking")
     expect(html).toContain("USD 1,027.50")
     expect(html).toContain("Cashflow")
@@ -198,10 +198,13 @@ describe("FinancesPage", () => {
     expect(html).toContain(
       'href="/finances?tab=overview&amp;chartPeriod=daily"'
     )
-    expect(html).toContain("Highest expense this month")
+    expect(html).toContain("This month / statement")
+    expect(html).toContain("Money in")
+    expect(html).toContain("Money out")
+    expect(html).toContain("Kept")
+    expect(html).toContain("Where it went")
+    expect(html).toContain("Largest single expense")
     expect(html).toContain("Design tools")
-    expect(html).toContain("Suggested overview data")
-    expect(html).toContain("Net cashflow")
     expect(html).toContain("Top expense category")
     expect(html).not.toContain("Overview is coming next.")
   })
@@ -437,10 +440,10 @@ describe("FinancesPage", () => {
       />
     )
 
-    expect(html).toContain("Current balance")
-    expect(html).toContain("Highest expense this month")
+    expect(html).toContain("Net worth")
+    expect(html).toContain("Largest single expense")
     expect(html).toContain("No expenses this month.")
-    expect(html).toContain("Total expenses")
+    expect(html).toContain("No expenses recorded this month.")
     expect(html).toContain("USD 0.00")
     expect(html).not.toContain("Overview is coming next.")
   })
