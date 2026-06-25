@@ -5,6 +5,7 @@ import {
   groupCategoriesByKind,
   parseFilterIds,
   parseFinanceTab,
+  parseOverviewChartPeriod,
   parsePeriod,
   parseTransactionTypeFilter,
   toggleFilterId,
@@ -31,6 +32,14 @@ describe("finance filters", () => {
     expect(parseTransactionTypeFilter("TRANSFER")).toBe("TRANSFER")
     expect(parseTransactionTypeFilter("UNKNOWN")).toBe("all")
     expect(parseTransactionTypeFilter(["INCOME", "EXPENSE"])).toBe("all")
+  })
+
+  test("parses overview chart periods", () => {
+    expect(parseOverviewChartPeriod(undefined)).toBe("monthly")
+    expect(parseOverviewChartPeriod("monthly")).toBe("monthly")
+    expect(parseOverviewChartPeriod("daily")).toBe("daily")
+    expect(parseOverviewChartPeriod("weekly")).toBe("monthly")
+    expect(parseOverviewChartPeriod(["monthly", "daily"])).toBe("monthly")
   })
 
   test("returns no date range for all time", () => {

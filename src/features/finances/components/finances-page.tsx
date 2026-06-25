@@ -17,16 +17,23 @@ import {
   NewCategoryButton,
 } from "@/features/finances/components/category-management"
 import { NewTransactionDrawerButton } from "@/features/finances/components/new-transaction-drawer"
+import { OverviewCashflowChart } from "@/features/finances/components/overview-cashflow-chart"
 import { TransactionList } from "@/features/finances/components/transaction-list"
 import {
   type FinanceTab,
   type FinancePeriod,
+  type OverviewChartPeriod,
   type FinanceTransactionTypeFilter,
   groupCategoriesByKind,
   periodOptions,
   toggleFilterId,
   transactionTypeFilterOptions,
 } from "@/features/finances/filters"
+import {
+  buildMonthlyCashflowBuckets,
+  buildWeeklyCashflowBuckets,
+  getMonthOverviewStats,
+} from "@/features/finances/overview"
 import {
   NewRecurringPaymentButton,
   RecurringPaymentActionButtons,
@@ -61,6 +68,7 @@ type FinancesPageProps = {
   >
   recurringPayments?: RecurringPayment[]
   tab: FinanceTab
+  chartPeriod?: OverviewChartPeriod
   timezone: string
   transactions: Transaction[]
   filters: {
@@ -90,6 +98,11 @@ const tabLabels: Record<FinanceTab, string> = {
   transactions: "Transactions",
   recurring: "Recurring Payments",
   manage: "Manage",
+}
+
+const chartPeriodLabels: Record<OverviewChartPeriod, string> = {
+  monthly: "Monthly",
+  daily: "Daily",
 }
 
 const frequencyLabels: Record<RecurringPayment["frequency"], string> = {
@@ -123,6 +136,12 @@ function formatCurrency(
 ) {
   return formatCurrencyAmount(amount, currency, {
     negative: type === "EXPENSE",
+  })
+}
+
+function formatExpenseCurrency(amount: string, currency: string) {
+  return formatCurrencyAmount(amount, currency, {
+    negative: amount !== "0.00",
   })
 }
 
@@ -206,6 +225,10 @@ function buildHref(
 
 function buildTabHref(tab: FinanceTab) {
   return `/finances?tab=${tab}`
+}
+
+function buildOverviewChartHref(period: OverviewChartPeriod) {
+  return `/finances?tab=overview&chartPeriod=${period}`
 }
 
 function FilterLink({
@@ -523,22 +546,193 @@ function TransactionFilterButton({
   )
 }
 
-function PlaceholderPanel({
-  description,
-  title,
+function OverviewMetric({
+  label,
+  value,
+  detail,
 }: {
-  description: string
-  title: string
+  label: string
+  value: string
+  detail?: string
 }) {
   return (
-    <section className="border-b border-border py-14">
+    <article className="border border-border p-4">
       <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-        Planned
+        {label}
       </p>
-      <h2 className="mt-3 text-2xl leading-8">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-        {description}
+      <p className="mt-3 font-heading text-3xl leading-none tracking-tight">
+        {value}
       </p>
+      {detail ? (
+        <p className="mt-3 text-sm leading-6 text-muted-foreground">{detail}</p>
+      ) : null}
+    </article>
+  )
+}
+
+function OverviewTab({
+  accountBalances,
+  accounts,
+  categories,
+  chartPeriod,
+  financeSettings,
+  transactions,
+}: {
+  accountBalances: FinancesPageProps["accountBalances"]
+  accounts: FinancialAccount[]
+  categories: Category[]
+  chartPeriod: OverviewChartPeriod
+  financeSettings: FinancesPageProps["financeSettings"]
+  transactions: Transaction[]
+}) {
+  const now = new Date()
+  const baseCurrencyTransactions = transactions.filter(
+    (transaction) => transaction.currency === financeSettings.baseCurrency
+  )
+  const chartData =
+    chartPeriod === "daily"
+      ? buildWeeklyCashflowBuckets(
+          baseCurrencyTransactions,
+          now,
+          financeSettings.timezone,
+          financeSettings.weekStartsOn
+        )
+      : buildMonthlyCashflowBuckets(
+          baseCurrencyTransactions,
+          now,
+          financeSettings.timezone
+        )
+  const monthStats = getMonthOverviewStats(
+    baseCurrencyTransactions,
+    categories,
+    now,
+    {
+      monthStartDay: financeSettings.monthStartDay,
+      timezone: financeSettings.timezone,
+    }
+  )
+
+  return (
+    <section className="space-y-8 py-6">
+      <div className="space-y-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Current balance
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">All accounts</h2>
+        </div>
+        <AccountCards
+          accounts={accounts}
+          balances={accountBalances}
+          selectedAccountIds={[]}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.45fr_0.55fr]">
+        <div className="space-y-4 border border-border p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                Cashflow
+              </p>
+              <h2 className="mt-2 text-2xl leading-8">Income and expenses</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Values use {financeSettings.baseCurrency} transactions.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(["monthly", "daily"] as const).map((period) => (
+                <FilterLink
+                  key={period}
+                  active={chartPeriod === period}
+                  fallbackToneClassName=""
+                  href={buildOverviewChartHref(period)}
+                >
+                  {chartPeriodLabels[period]}
+                </FilterLink>
+              ))}
+            </div>
+          </div>
+          <OverviewCashflowChart
+            currency={financeSettings.baseCurrency}
+            data={chartData}
+          />
+        </div>
+
+        <div className="space-y-4">
+          <OverviewMetric
+            label="Highest expense this month"
+            value={
+              monthStats.highestExpense
+                ? formatExpenseCurrency(
+                    monthStats.highestExpense.amount,
+                    monthStats.highestExpense.currency
+                  )
+                : "None"
+            }
+            detail={
+              monthStats.highestExpense
+                ? `${monthStats.highestExpense.label} / ${monthStats.highestExpense.categoryName}`
+                : "No expenses this month."
+            }
+          />
+          <OverviewMetric
+            label="Transactions this month"
+            value={String(monthStats.transactionCount)}
+            detail={`Posted entries in ${financeSettings.baseCurrency}.`}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Suggested overview data
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">Month-to-date signals</h2>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+          <OverviewMetric
+            label="Total income"
+            value={formatCurrencyAmount(
+              monthStats.totalIncome,
+              financeSettings.baseCurrency
+            )}
+          />
+          <OverviewMetric
+            label="Total expenses"
+            value={formatExpenseCurrency(
+              monthStats.totalExpense,
+              financeSettings.baseCurrency
+            )}
+          />
+          <OverviewMetric
+            label="Net cashflow"
+            value={formatCurrencyAmount(
+              monthStats.netCashflow,
+              financeSettings.baseCurrency
+            )}
+          />
+          <OverviewMetric
+            label="Top expense category"
+            value={monthStats.topExpenseCategory?.categoryName ?? "None"}
+            detail={
+              monthStats.topExpenseCategory
+                ? `${formatExpenseCurrency(
+                    monthStats.topExpenseCategory.amount,
+                    monthStats.topExpenseCategory.currency
+                  )} across ${
+                    monthStats.topExpenseCategory.transactionCount
+                  } transaction${
+                    monthStats.topExpenseCategory.transactionCount === 1
+                      ? ""
+                      : "s"
+                  }`
+                : "No categorized expenses this month."
+            }
+          />
+        </div>
+      </div>
     </section>
   )
 }
@@ -950,6 +1144,7 @@ export function FinancesPage({
   accountBalances,
   accounts,
   categories,
+  chartPeriod = "monthly",
   financeSettings,
   recurringPayments = [],
   tab,
@@ -995,9 +1190,13 @@ export function FinancesPage({
         <FinanceTabs activeTab={tab} />
 
         {tab === "overview" ? (
-          <PlaceholderPanel
-            title="Overview is coming next."
-            description="This tab will summarize balances, cashflow, and spending without exposing every transaction at once."
+          <OverviewTab
+            accountBalances={accountBalances}
+            accounts={accounts}
+            categories={categories}
+            chartPeriod={chartPeriod}
+            financeSettings={financeSettings}
+            transactions={transactions}
           />
         ) : null}
 

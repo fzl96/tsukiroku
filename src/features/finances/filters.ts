@@ -11,6 +11,7 @@ export const financeTabOptions = [
   "recurring",
   "manage",
 ] as const
+export const overviewChartPeriodOptions = ["monthly", "daily"] as const
 export const transactionTypeFilterOptions = [
   "all",
   "INCOME",
@@ -20,6 +21,7 @@ export const transactionTypeFilterOptions = [
 
 export type FinancePeriod = (typeof periodOptions)[number]
 export type FinanceTab = (typeof financeTabOptions)[number]
+export type OverviewChartPeriod = (typeof overviewChartPeriodOptions)[number]
 export type FinanceTransactionTypeFilter =
   (typeof transactionTypeFilterOptions)[number]
 
@@ -68,6 +70,18 @@ export function parseTransactionTypeFilter(
   )
     ? (value as FinanceTransactionTypeFilter)
     : "all"
+}
+
+export function parseOverviewChartPeriod(
+  value: string | string[] | undefined
+): OverviewChartPeriod {
+  if (typeof value !== "string") {
+    return "monthly"
+  }
+
+  return overviewChartPeriodOptions.includes(value as OverviewChartPeriod)
+    ? (value as OverviewChartPeriod)
+    : "monthly"
 }
 
 export function parseFilterIds(value: string | string[] | undefined) {

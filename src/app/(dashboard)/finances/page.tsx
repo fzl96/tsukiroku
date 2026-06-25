@@ -7,6 +7,7 @@ import {
   getPeriodRange,
   parseFilterIds,
   parseFinanceTab,
+  parseOverviewChartPeriod,
   parsePeriod,
   parseTransactionTypeFilter,
 } from "@/features/finances/filters"
@@ -21,6 +22,7 @@ import { requireUser } from "@/lib/auth"
 type FinancesSearchParams = Promise<{
   accountId?: string | string[]
   categoryId?: string | string[]
+  chartPeriod?: string | string[]
   period?: string | string[]
   tab?: string | string[]
   type?: string | string[]
@@ -37,6 +39,7 @@ export default async function FinancesRoute({
   const settings =
     existingSettings ?? (await createDefaultFinanceSettings(user.id))
   const tab = parseFinanceTab(query.tab)
+  const chartPeriod = parseOverviewChartPeriod(query.chartPeriod)
   const period = parsePeriod(query.period)
   const type = parseTransactionTypeFilter(query.type)
   const periodRange = getPeriodRange(period, new Date(), {
@@ -85,6 +88,7 @@ export default async function FinancesRoute({
         timezone={settings.timezone}
         transactions={transactions}
         tab={tab}
+        chartPeriod={chartPeriod}
         filters={{ accountIds, categoryIds, period, type }}
       />
     </>

@@ -13,6 +13,7 @@
 ### Task 1: Overview Summary Helpers
 
 **Files:**
+
 - Create: `src/features/finances/overview.ts`
 - Create: `src/features/finances/overview.test.ts`
 
@@ -57,6 +58,7 @@ Expected: PASS.
 ### Task 2: Cashflow Chart Client Component
 
 **Files:**
+
 - Create: `src/features/finances/components/overview-cashflow-chart.tsx`
 - Test indirectly through `src/features/finances/components/finances-page.test.tsx`
 
@@ -103,6 +105,7 @@ Expected: still FAIL until Task 3 wires the UI.
 ### Task 3: Overview UI And Query Param
 
 **Files:**
+
 - Modify: `src/features/finances/filters.ts`
 - Modify: `src/features/finances/filters.test.ts`
 - Modify: `src/app/(dashboard)/finances/page.tsx`
@@ -146,6 +149,7 @@ Expected: PASS.
 ### Task 4: Verification
 
 **Files:**
+
 - No new files.
 
 **Step 1: Run quality checks**

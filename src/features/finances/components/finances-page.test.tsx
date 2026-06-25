@@ -125,6 +125,17 @@ const transaction = {
   userId: "user_1",
 } as Transaction
 
+const expenseTransaction = {
+  ...transaction,
+  id: "transaction_2",
+  amount: "72.50",
+  categoryId: expenseCategory.id,
+  merchant: "Figma",
+  occurredAt: new Date("2026-06-21T00:00:00.000Z"),
+  title: "Design tools",
+  type: "EXPENSE",
+} as Transaction
+
 const recurringPayment = {
   id: "recurring_1",
   accountId: account.id,
@@ -148,6 +159,53 @@ const recurringPayment = {
 } as RecurringPayment
 
 describe("FinancesPage", () => {
+  test("renders the overview with balances cashflow and month insights", async () => {
+    const { FinancesPage } =
+      await import("@/features/finances/components/finances-page")
+
+    const html = renderToStaticMarkup(
+      <FinancesPage
+        accountBalances={[
+          { accountId: account.id, amount: "1027.50", currency: "USD" },
+        ]}
+        accounts={[account]}
+        categories={[category, expenseCategory]}
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
+        filters={{
+          accountIds: [],
+          categoryIds: [],
+          period: "all",
+          type: "all",
+        }}
+        tab="overview"
+        timezone="UTC"
+        transactions={[transaction, expenseTransaction]}
+      />
+    )
+
+    expect(html).toContain("Current balance")
+    expect(html).toContain("Checking")
+    expect(html).toContain("USD 1,027.50")
+    expect(html).toContain("Cashflow")
+    expect(html).toContain(
+      'href="/finances?tab=overview&amp;chartPeriod=monthly"'
+    )
+    expect(html).toContain(
+      'href="/finances?tab=overview&amp;chartPeriod=daily"'
+    )
+    expect(html).toContain("Highest expense this month")
+    expect(html).toContain("Design tools")
+    expect(html).toContain("Suggested overview data")
+    expect(html).toContain("Net cashflow")
+    expect(html).toContain("Top expense category")
+    expect(html).not.toContain("Overview is coming next.")
+  })
+
   test("renders four query-param tabs and defaults to transactions", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")
@@ -350,7 +408,7 @@ describe("FinancesPage", () => {
     expect(html).toContain(`background-color:${category.color}`)
   })
 
-  test("renders placeholder state for overview", async () => {
+  test("renders overview when there are no monthly expenses", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")
 
@@ -379,7 +437,12 @@ describe("FinancesPage", () => {
       />
     )
 
-    expect(html).toContain("Overview is coming next.")
+    expect(html).toContain("Current balance")
+    expect(html).toContain("Highest expense this month")
+    expect(html).toContain("No expenses this month.")
+    expect(html).toContain("Total expenses")
+    expect(html).toContain("USD 0.00")
+    expect(html).not.toContain("Overview is coming next.")
   })
 
   test("renders recurring payments with controls", async () => {
