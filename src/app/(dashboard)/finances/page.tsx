@@ -1,8 +1,13 @@
-import { listFinancialAccounts } from "@/features/accounts/queries"
-import { getAccountBalance } from "@/features/accounts/service"
+import { Suspense } from "react"
+
+import {
+  getAccountBalances,
+  listFinancialAccounts,
+} from "@/features/accounts/queries"
 import { listCategories } from "@/features/categories/queries"
 import { FinanceTimezoneInitializer } from "@/features/finances/components/finance-timezone-initializer"
 import { FinancesPage } from "@/features/finances/components/finances-page"
+import { FinancesPageSkeleton } from "@/features/finances/components/finances-page-skeleton"
 import {
   getPeriodRange,
   parseFilterIds,
@@ -33,11 +38,28 @@ export default async function FinancesRoute({
 }: {
   searchParams: FinancesSearchParams
 }) {
-  const user = await requireUser()
   const query = await searchParams
+
+  return (
+    <Suspense
+      key={JSON.stringify(query)}
+      fallback={<FinancesPageSkeleton tab={parseFinanceTab(query.tab)} />}
+    >
+      <FinancesContent query={query} />
+    </Suspense>
+  )
+}
+
+async function FinancesContent({
+  query,
+}: {
+  query: Awaited<FinancesSearchParams>
+}) {
+  const user = await requireUser()
   const existingSettings = await getUserFinanceSettings(user.id)
   const settings =
     existingSettings ?? (await createDefaultFinanceSettings(user.id))
+
   const tab = parseFinanceTab(query.tab)
   const chartPeriod = parseOverviewChartPeriod(query.chartPeriod)
   const period = parsePeriod(query.period)
@@ -57,17 +79,31 @@ export default async function FinancesRoute({
     ...(type !== "all" ? { type } : {}),
   }
 
-  const accounts = await listFinancialAccounts(user.id)
-  const categories = await listCategories(user.id)
-  const recurringPayments = await listRecurringPayments(user.id, {
-    includeInactive: true,
-  })
-  const transactions = await listTransactions(user.id, transactionFilters)
-  const accountBalances = []
+  // Only the overview and transactions tabs render the transaction list and
+  // derived stats; balances are needed everywhere except recurring.
+  const needsTransactions = tab === "overview" || tab === "transactions"
+  const needsBalances = tab !== "recurring"
+  const needsRecurring = tab === "recurring"
 
-  for (const account of accounts) {
-    accountBalances.push(await getAccountBalance(user.id, account.id))
-  }
+  // Always-needed, lightweight reads run together.
+  const [accounts, categories] = await Promise.all([
+    listFinancialAccounts(user.id),
+    listCategories(user.id),
+  ])
+
+  // Tab-specific, heavier reads run in parallel and are skipped when the active
+  // tab does not render them.
+  const [transactions, accountBalances, recurringPayments] = await Promise.all([
+    needsTransactions
+      ? listTransactions(user.id, transactionFilters)
+      : Promise.resolve([]),
+    needsBalances
+      ? getAccountBalances(user.id, accounts)
+      : Promise.resolve([]),
+    needsRecurring
+      ? listRecurringPayments(user.id, { includeInactive: true })
+      : Promise.resolve([]),
+  ])
 
   return (
     <>

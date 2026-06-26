@@ -1,7 +1,11 @@
 import { and, asc, eq } from "drizzle-orm"
 
 import { db } from "@/db"
-import { financialAccount } from "@/db/schema"
+import { financialAccount, transaction, type FinancialAccount } from "@/db/schema"
+import {
+  computeAccountBalances,
+  type AccountBalance,
+} from "@/features/accounts/balances"
 import { listFinancialAccountsFiltersSchema } from "@/features/accounts/validations"
 
 export async function getFinancialAccount(userId: string, accountId: string) {
@@ -32,4 +36,34 @@ export async function listFinancialAccounts(userId: string, filters?: unknown) {
     .from(financialAccount)
     .where(and(...conditions))
     .orderBy(asc(financialAccount.displayOrder), asc(financialAccount.name))
+}
+
+/**
+ * Computes balances for all given accounts using a single query over the user's
+ * POSTED transactions, replacing the per-account N+1 pattern.
+ */
+export async function getAccountBalances(
+  userId: string,
+  accounts: FinancialAccount[]
+): Promise<AccountBalance[]> {
+  if (!accounts.length) {
+    return []
+  }
+
+  const rows = await db
+    .select({
+      accountId: transaction.accountId,
+      transferAccountId: transaction.transferAccountId,
+      type: transaction.type,
+      amount: transaction.amount,
+    })
+    .from(transaction)
+    .where(
+      and(
+        eq(transaction.userId, userId),
+        eq(transaction.status, "POSTED")
+      )
+    )
+
+  return computeAccountBalances(accounts, rows)
 }

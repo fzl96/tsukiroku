@@ -2,8 +2,10 @@ import { and, eq, gte, inArray, lte, sql } from "drizzle-orm"
 
 import { category, transaction } from "@/db/schema"
 import { db } from "@/db"
-import { listFinancialAccounts } from "@/features/accounts/queries"
-import { getAccountBalance } from "@/features/accounts/service"
+import {
+  getAccountBalances as getAccountBalancesForAccounts,
+  listFinancialAccounts,
+} from "@/features/accounts/queries"
 import { getNetCashflowByCurrency } from "@/features/dashboard/summary"
 import type {
   CategorySummary,
@@ -108,17 +110,15 @@ export async function getIncomeByCategory(
 
 export async function getAccountBalances(userId: string) {
   const accounts = await listFinancialAccounts(userId)
-
-  return Promise.all(
-    accounts.map(async (account) => {
-      const balance = await getAccountBalance(userId, account.id)
-
-      return {
-        ...balance,
-        name: account.name,
-      }
-    }),
+  const balances = await getAccountBalancesForAccounts(userId, accounts)
+  const nameByAccountId = new Map(
+    accounts.map((account) => [account.id, account.name]),
   )
+
+  return balances.map((balance) => ({
+    ...balance,
+    name: nameByAccountId.get(balance.accountId) ?? "",
+  }))
 }
 
 export async function getUpcomingRecurringPayments(
