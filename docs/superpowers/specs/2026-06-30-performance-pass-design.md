@@ -70,16 +70,29 @@ balance column. Accurate, no invalidation complexity, supported by existing
 indexes. A maintained/materialized column is explicitly deferred (YAGNI) until
 aggregation is measured to be slow.
 
-### 3. Connection pool tuning for serverless
+### 3. Connection pooling for serverless
 
-**Problem:** `src/db/index.ts` sets `max: 1`, so the page's `Promise.all` reads
-serialize over a single connection instead of overlapping.
+**Problem:** Two issues. (a) `DATABASE_URL` currently targets the Supabase
+**session pooler** (`aws-1-ap-southeast-1.pooler.supabase.com:5432`,
+user `postgres.<ref>`), which holds a server connection for the whole function
+invocation — suboptimal for Vercel fan-out. (b) `src/db/index.ts` sets `max: 1`,
+so the page's `Promise.all` reads serialize over a single connection instead of
+overlapping.
 
-**Change:** Raise `max` to a small value (≈3) to allow in-request parallelism,
-keep `prepare: false`, add `idle_timeout` and `connect_timeout`, and confirm the
-`DATABASE_URL` points at Supabase's **transaction pooler (port 6543)**, not the
-direct connection. `max` stays small so many concurrent lambda instances don't
-exhaust the pooler's connection limit. Config + verification, minimal code.
+**Change:**
+- Point the **runtime** `DATABASE_URL` at the Supabase **transaction pooler**:
+  same host and user, port `5432` → `6543`. The transaction pooler returns the
+  connection to the pool after each transaction. It *requires* `prepare: false`,
+  which the client already sets — so this is a low-risk, port-only change.
+- Raise `max` to a small value (≈3) to allow in-request parallelism; add
+  `idle_timeout` and `connect_timeout`. `max` stays small so many concurrent
+  lambda instances don't exhaust the pooler's connection limit.
+
+**Caveat:** `drizzle-kit` migrations (`db:migrate` / `db:push`) should **not**
+run through the transaction pooler (no prepared statements / no session state).
+Keep migrations on the session pooler (`5432`) or a direct connection via a
+separate `DIRECT_URL`, wired into `drizzle.config.ts` only. The runtime app uses
+`6543`; migrations use `5432`/direct.
 
 ### 4. Next data cache for low-churn reads
 
