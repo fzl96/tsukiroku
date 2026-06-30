@@ -1,4 +1,5 @@
 import { and, asc, eq } from "drizzle-orm"
+import { unstable_cache } from "next/cache"
 
 import { db } from "@/db"
 import { category } from "@/db/schema"
@@ -31,4 +32,16 @@ export async function listCategories(userId: string, filters?: unknown) {
     .from(category)
     .where(and(...conditions))
     .orderBy(asc(category.kind), asc(category.name))
+}
+
+/**
+ * Per-user cached variant of {@link listCategories} (no filters).
+ * Invalidated via `revalidateTag(`categories:${userId}`)` on category mutations.
+ */
+export function getCachedCategories(userId: string) {
+  return unstable_cache(
+    () => listCategories(userId),
+    ["categories", userId],
+    { tags: [`categories:${userId}`], revalidate: 3600 }
+  )()
 }

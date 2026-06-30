@@ -1,4 +1,5 @@
 import { and, asc, eq, isNotNull, sql } from "drizzle-orm"
+import { unstable_cache } from "next/cache"
 
 import { db } from "@/db"
 import { financialAccount, transaction, type FinancialAccount } from "@/db/schema"
@@ -37,6 +38,18 @@ export async function listFinancialAccounts(userId: string, filters?: unknown) {
     .from(financialAccount)
     .where(and(...conditions))
     .orderBy(asc(financialAccount.displayOrder), asc(financialAccount.name))
+}
+
+/**
+ * Per-user cached variant of {@link listFinancialAccounts} (no filters).
+ * Invalidated via `revalidateTag(`accounts:${userId}`)` on account mutations.
+ */
+export function getCachedFinancialAccounts(userId: string) {
+  return unstable_cache(
+    () => listFinancialAccounts(userId),
+    ["financial-accounts", userId],
+    { tags: [`accounts:${userId}`], revalidate: 3600 }
+  )()
 }
 
 /**

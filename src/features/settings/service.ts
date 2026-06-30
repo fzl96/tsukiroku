@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm"
+import { unstable_cache } from "next/cache"
 
 import { db } from "@/db"
 import { userFinanceSettings } from "@/db/schema"
@@ -13,6 +14,19 @@ export async function getUserFinanceSettings(userId: string) {
     .limit(1)
 
   return settings ?? null
+}
+
+/**
+ * Per-user cached variant of {@link getUserFinanceSettings}. For brand-new users
+ * this may cache `null` until the settings tag is revalidated by
+ * `createDefaultFinanceSettingsAction`; existing users (the hot path) hit cache.
+ */
+export function getCachedUserFinanceSettings(userId: string) {
+  return unstable_cache(
+    () => getUserFinanceSettings(userId),
+    ["user-finance-settings", userId],
+    { tags: [`settings:${userId}`], revalidate: 3600 }
+  )()
 }
 
 export async function createDefaultFinanceSettings(

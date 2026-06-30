@@ -2,9 +2,9 @@ import { Suspense } from "react"
 
 import {
   getAccountBalances,
-  listFinancialAccounts,
+  getCachedFinancialAccounts,
 } from "@/features/accounts/queries"
-import { listCategories } from "@/features/categories/queries"
+import { getCachedCategories } from "@/features/categories/queries"
 import { FinanceTimezoneInitializer } from "@/features/finances/components/finance-timezone-initializer"
 import { FinancesPage } from "@/features/finances/components/finances-page"
 import { FinancesPageSkeleton } from "@/features/finances/components/finances-page-skeleton"
@@ -18,7 +18,7 @@ import {
 } from "@/features/finances/filters"
 import {
   createDefaultFinanceSettings,
-  getUserFinanceSettings,
+  getCachedUserFinanceSettings,
 } from "@/features/settings/service"
 import { listRecurringPayments } from "@/features/recurring-payments/queries"
 import { listTransactions } from "@/features/transactions/queries"
@@ -56,7 +56,7 @@ async function FinancesContent({
   query: Awaited<FinancesSearchParams>
 }) {
   const user = await requireUser()
-  const existingSettings = await getUserFinanceSettings(user.id)
+  const existingSettings = await getCachedUserFinanceSettings(user.id)
   const settings =
     existingSettings ?? (await createDefaultFinanceSettings(user.id))
 
@@ -87,8 +87,8 @@ async function FinancesContent({
 
   // Always-needed, lightweight reads run together.
   const [accounts, categories] = await Promise.all([
-    listFinancialAccounts(user.id),
-    listCategories(user.id),
+    getCachedFinancialAccounts(user.id),
+    getCachedCategories(user.id),
   ])
 
   // Tab-specific, heavier reads run in parallel and are skipped when the active
