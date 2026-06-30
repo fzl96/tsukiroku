@@ -2,6 +2,9 @@ import { describe, expect, test } from "bun:test"
 
 import {
   createTransactionSchema,
+  initialTransactionListOptionsSchema,
+  transactionListDayOptionsSchema,
+  transactionListPageOptionsSchema,
   listTransactionsFiltersSchema,
 } from "./validations"
 
@@ -113,6 +116,60 @@ describe("transaction validation", () => {
     ).toEqual({
       accountIds: ["bank", "cash"],
       categoryIds: ["salary", "groceries"],
+    })
+  })
+
+  test("accepts bounded initial transaction list options", () => {
+    expect(
+      initialTransactionListOptionsSchema.parse({
+        timezone: "Asia/Jakarta",
+        transactionsPerDay: 5,
+        visibleDays: 7,
+      })
+    ).toEqual({
+      timezone: "Asia/Jakarta",
+      transactionsPerDay: 5,
+      visibleDays: 7,
+    })
+
+    expect(() =>
+      initialTransactionListOptionsSchema.parse({
+        timezone: "Asia/Jakarta",
+        transactionsPerDay: 0,
+        visibleDays: 7,
+      })
+    ).toThrow()
+  })
+
+  test("accepts transaction list page options", () => {
+    expect(
+      transactionListPageOptionsSchema.parse({
+        dayOffset: 7,
+        timezone: "Asia/Jakarta",
+        transactionsPerDay: 5,
+        visibleDays: 7,
+      })
+    ).toEqual({
+      dayOffset: 7,
+      timezone: "Asia/Jakarta",
+      transactionsPerDay: 5,
+      visibleDays: 7,
+    })
+  })
+
+  test("accepts transaction list day options", () => {
+    expect(
+      transactionListDayOptionsSchema.parse({
+        dayKey: "2026-06-30",
+        timezone: "Asia/Jakarta",
+        transactionOffset: 5,
+        transactionsPerPage: 5,
+      })
+    ).toEqual({
+      dayKey: "2026-06-30",
+      timezone: "Asia/Jakarta",
+      transactionOffset: 5,
+      transactionsPerPage: 5,
     })
   })
 })

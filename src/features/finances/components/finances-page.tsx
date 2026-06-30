@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { Suspense } from "react"
-import { addDays } from "date-fns"
 
 import type {
   Category,
@@ -30,6 +29,8 @@ import {
   toggleFilterId,
   transactionTypeFilterOptions,
 } from "@/features/finances/filters"
+import { groupTransactions } from "@/features/finances/transaction-groups"
+import { type TransactionGroup } from "@/features/finances/transaction-list"
 import {
   buildMonthlyCashflowBuckets,
   buildWeeklyCashflowBuckets,
@@ -52,11 +53,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  formatDateForUser,
-  getDateInputValueInTimeZone,
-  parseUserDateAsUtc,
-} from "@/lib/timezone"
+import { formatDateForUser } from "@/lib/timezone"
 import { formatCurrencyAmount } from "@/lib/money"
 import { cn } from "@/lib/utils"
 
@@ -73,9 +70,12 @@ type FinancesPageProps = {
     "baseCurrency" | "monthStartDay" | "timezone" | "weekStartsOn"
   >
   recurringPayments?: RecurringPayment[]
+  hasMoreTransactionDays?: boolean
+  nextTransactionDayOffset?: number | null
   tab: FinanceTab
   chartPeriod?: OverviewChartPeriod
   timezone: string
+  transactionFilters?: unknown
   transactions: Transaction[]
   filters: {
     accountIds: string[]
@@ -149,43 +149,6 @@ function formatExpenseCurrency(amount: string, currency: string) {
   return formatCurrencyAmount(amount, currency, {
     negative: amount !== "0.00",
   })
-}
-
-function getGroupLabel(date: Date, timezone: string) {
-  const today = new Date()
-  const todayValue = getDateInputValueInTimeZone(today, timezone)
-  const yesterdayValue = getDateInputValueInTimeZone(
-    addDays(parseUserDateAsUtc(todayValue, timezone), -1),
-    timezone
-  )
-  const targetValue = getDateInputValueInTimeZone(date, timezone)
-
-  if (targetValue === todayValue) {
-    return "Today"
-  }
-
-  if (targetValue === yesterdayValue) {
-    return "Yesterday"
-  }
-
-  return formatDateForUser(date, timezone)
-}
-
-function groupTransactions(transactions: Transaction[], timezone: string) {
-  return transactions.reduce<
-    Array<{ label: string; transactions: Transaction[] }>
-  >((groups, transaction) => {
-    const label = getGroupLabel(transaction.occurredAt, timezone)
-    const group = groups.find((item) => item.label === label)
-
-    if (group) {
-      group.transactions.push(transaction)
-      return groups
-    }
-
-    groups.push({ label, transactions: [transaction] })
-    return groups
-  }, [])
 }
 
 function getBaseCurrencyTransactions(
@@ -1507,6 +1470,9 @@ function TransactionTab({
   categories,
   filters,
   groupedTransactions,
+  hasMoreDays,
+  nextDayOffset,
+  transactionFilters,
   timezone,
 }: {
   accountBalances: FinancesPageProps["accountBalances"]
@@ -1515,7 +1481,10 @@ function TransactionTab({
   activeCategories: string[]
   categories: Category[]
   filters: FinancesPageProps["filters"]
-  groupedTransactions: Array<{ label: string; transactions: Transaction[] }>
+  groupedTransactions: TransactionGroup[]
+  hasMoreDays: boolean
+  nextDayOffset: number | null
+  transactionFilters: unknown
   timezone: string
 }) {
   return (
@@ -1566,6 +1535,9 @@ function TransactionTab({
             accounts={accounts}
             categories={categories}
             groups={groupedTransactions}
+            hasMoreDays={hasMoreDays}
+            nextDayOffset={nextDayOffset}
+            transactionFilters={transactionFilters}
             timezone={timezone}
           />
         ) : (
@@ -1908,9 +1880,12 @@ export function FinancesPage({
   categories,
   chartPeriod = "monthly",
   financeSettings,
+  hasMoreTransactionDays = false,
+  nextTransactionDayOffset = null,
   recurringPayments = [],
   tab,
   timezone,
+  transactionFilters,
   transactions,
   filters,
 }: FinancesPageProps) {
@@ -1959,6 +1934,9 @@ export function FinancesPage({
           categories={categories}
           filters={filters}
           groupedTransactions={groupedTransactions}
+          hasMoreDays={hasMoreTransactionDays}
+          nextDayOffset={nextTransactionDayOffset}
+          transactionFilters={transactionFilters}
           timezone={timezone}
         />
       ) : null}

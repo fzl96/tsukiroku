@@ -108,6 +108,22 @@ export const listTransactionsFiltersSchema = z
   })
   .optional()
 
+export const initialTransactionListOptionsSchema = z.object({
+  timezone: z.string().trim().min(1),
+  transactionsPerDay: z.number().int().positive().max(100),
+  visibleDays: z.number().int().positive().max(31),
+})
+export const transactionListPageOptionsSchema =
+  initialTransactionListOptionsSchema.extend({
+    dayOffset: z.number().int().nonnegative().default(0),
+  })
+export const transactionListDayOptionsSchema = z.object({
+  dayKey: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  timezone: z.string().trim().min(1),
+  transactionOffset: z.number().int().nonnegative(),
+  transactionsPerPage: z.number().int().positive().max(100),
+})
+
 export const categoryCompatibleTransactionTypeSchema = categoryKindSchema
 
 export type TransactionType = z.infer<typeof transactionTypeSchema>

@@ -29,7 +29,7 @@ import {
 } from "@/features/settings/service"
 import { listRecurringPayments } from "@/features/recurring-payments/queries"
 import {
-  listInitialTransactions,
+  listTransactionPage,
   listTransactions,
 } from "@/features/transactions/queries"
 import { requireUser } from "@/lib/auth"
@@ -133,19 +133,26 @@ async function FinancesContent({
 
   // Tab-specific, heavier reads run in parallel and are skipped when the active
   // tab does not render them.
-  const [transactions, accountBalances, recurringPayments] = await Promise.all([
-    needsTransactions
-      ? listInitialTransactions(user.id, transactionFilters, {
-          timezone: settings.timezone,
-          transactionsPerDay: DEFAULT_VISIBLE_TRANSACTIONS_PER_DAY,
-          visibleDays: DEFAULT_VISIBLE_TRANSACTION_DAYS,
-        })
-      : Promise.resolve([]),
-    needsBalances ? getAccountBalances(user.id, accounts) : Promise.resolve([]),
-    needsRecurring
-      ? listRecurringPayments(user.id, { includeInactive: true })
-      : Promise.resolve([]),
-  ])
+  const [transactionPage, accountBalances, recurringPayments] =
+    await Promise.all([
+      needsTransactions
+        ? listTransactionPage(user.id, transactionFilters, {
+            timezone: settings.timezone,
+            transactionsPerDay: DEFAULT_VISIBLE_TRANSACTIONS_PER_DAY,
+            visibleDays: DEFAULT_VISIBLE_TRANSACTION_DAYS,
+          })
+        : Promise.resolve({
+            hasMoreDays: false,
+            nextDayOffset: null,
+            transactions: [],
+          }),
+      needsBalances
+        ? getAccountBalances(user.id, accounts)
+        : Promise.resolve([]),
+      needsRecurring
+        ? listRecurringPayments(user.id, { includeInactive: true })
+        : Promise.resolve([]),
+    ])
 
   return (
     <>
@@ -162,9 +169,12 @@ async function FinancesContent({
         accountBalances={accountBalances}
         categories={categories}
         financeSettings={settings}
+        hasMoreTransactionDays={transactionPage.hasMoreDays}
+        nextTransactionDayOffset={transactionPage.nextDayOffset}
         recurringPayments={recurringPayments}
         timezone={settings.timezone}
-        transactions={transactions}
+        transactionFilters={transactionFilters}
+        transactions={transactionPage.transactions}
         tab={tab}
         chartPeriod={chartPeriod}
         filters={{ accountIds, categoryIds, period, type }}
