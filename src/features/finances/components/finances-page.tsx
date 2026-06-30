@@ -821,12 +821,12 @@ function OverviewNetWorthSkeleton({ baseCurrency }: { baseCurrency: string }) {
         </p>
         <Skeleton className="mt-3 h-14 w-64 max-w-full sm:h-16" />
       </div>
-      <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+      <div className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
         <Skeleton
           className="h-4 w-44"
           aria-label={`Loading ${baseCurrency} accounts`}
         />
-      </p>
+      </div>
     </div>
   )
 }
@@ -1343,7 +1343,7 @@ function OverviewTab({
   )
 }
 
-function FinancesShell({
+export function FinancesShell({
   aside,
   children,
   tab,
@@ -1376,7 +1376,39 @@ function FinancesShell({
   )
 }
 
-export function FinancesOverviewStreamingPage({
+export function FinancesHeaderAside({
+  recurringCount = 0,
+  tab,
+  transactionCount = 0,
+}: {
+  recurringCount?: number
+  tab: FinanceTab
+  transactionCount?: number
+}) {
+  return (
+    <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
+      {tab === "manage"
+        ? "Manage"
+        : tab === "recurring"
+          ? `${recurringCount} recurring`
+          : `${transactionCount} transactions`}
+    </p>
+  )
+}
+
+export function FinancesHeaderAsideSkeleton({ tab }: { tab: FinanceTab }) {
+  if (tab === "manage") {
+    return <FinancesHeaderAside tab={tab} />
+  }
+
+  return (
+    <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
+      Loading {tab === "recurring" ? "recurring" : "transactions"}
+    </p>
+  )
+}
+
+export function FinancesOverviewStreamingBody({
   accountBalancesPromise,
   accountsPromise,
   categoriesPromise,
@@ -1392,72 +1424,80 @@ export function FinancesOverviewStreamingPage({
   transactionsPromise: Promise<Transaction[]>
 }) {
   return (
-    <FinancesShell
-      tab="overview"
-      aside={
-        <Suspense fallback={<OverviewTransactionCountSkeleton />}>
-          <OverviewTransactionCount transactionsPromise={transactionsPromise} />
-        </Suspense>
-      }
-    >
-      <section className="space-y-10 py-6">
-        <Suspense
-          fallback={
-            <OverviewNetWorthSkeleton
-              baseCurrency={financeSettings.baseCurrency}
-            />
-          }
-        >
-          <OverviewNetWorthSection
-            accountBalancesPromise={accountBalancesPromise}
-            financeSettings={financeSettings}
+    <section className="space-y-10 py-6">
+      <Suspense
+        fallback={
+          <OverviewNetWorthSkeleton
+            baseCurrency={financeSettings.baseCurrency}
           />
-        </Suspense>
+        }
+      >
+        <OverviewNetWorthSection
+          accountBalancesPromise={accountBalancesPromise}
+          financeSettings={financeSettings}
+        />
+      </Suspense>
 
-        <Suspense fallback={<OverviewStatementSkeleton />}>
-          <OverviewStatementSection
+      <Suspense fallback={<OverviewStatementSkeleton />}>
+        <OverviewStatementSection
+          financeSettings={financeSettings}
+          transactionsPromise={transactionsPromise}
+        />
+      </Suspense>
+
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <Suspense
+          fallback={<OverviewCashflowChartSkeleton chartPeriod={chartPeriod} />}
+        >
+          <OverviewCashflowChartSection
+            chartPeriod={chartPeriod}
             financeSettings={financeSettings}
             transactionsPromise={transactionsPromise}
           />
         </Suspense>
 
-        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-          <Suspense
-            fallback={
-              <OverviewCashflowChartSkeleton chartPeriod={chartPeriod} />
-            }
-          >
-            <OverviewCashflowChartSection
-              chartPeriod={chartPeriod}
-              financeSettings={financeSettings}
-              transactionsPromise={transactionsPromise}
-            />
-          </Suspense>
-
-          <Suspense fallback={<OverviewExpenseBreakdownSkeleton />}>
-            <OverviewExpenseBreakdownSection
-              categoriesPromise={categoriesPromise}
-              financeSettings={financeSettings}
-              transactionsPromise={transactionsPromise}
-            />
-          </Suspense>
-        </div>
-
-        <Suspense fallback={<OverviewAccountsSkeleton />}>
-          <OverviewAccountsSection
-            accountBalancesPromise={accountBalancesPromise}
-            accountsPromise={accountsPromise}
-          />
-        </Suspense>
-
-        <Suspense fallback={<OverviewNotableSignalsSkeleton />}>
-          <OverviewNotableSignalsSection
+        <Suspense fallback={<OverviewExpenseBreakdownSkeleton />}>
+          <OverviewExpenseBreakdownSection
             categoriesPromise={categoriesPromise}
             financeSettings={financeSettings}
             transactionsPromise={transactionsPromise}
           />
         </Suspense>
-      </section>
+      </div>
+
+      <Suspense fallback={<OverviewAccountsSkeleton />}>
+        <OverviewAccountsSection
+          accountBalancesPromise={accountBalancesPromise}
+          accountsPromise={accountsPromise}
+        />
+      </Suspense>
+
+      <Suspense fallback={<OverviewNotableSignalsSkeleton />}>
+        <OverviewNotableSignalsSection
+          categoriesPromise={categoriesPromise}
+          financeSettings={financeSettings}
+          transactionsPromise={transactionsPromise}
+        />
+      </Suspense>
+    </section>
+  )
+}
+
+export function FinancesOverviewStreamingPage(
+  props: Parameters<typeof FinancesOverviewStreamingBody>[0]
+) {
+  return (
+    <FinancesShell
+      tab="overview"
+      aside={
+        <Suspense fallback={<OverviewTransactionCountSkeleton />}>
+          <OverviewTransactionCount
+            transactionsPromise={props.transactionsPromise}
+          />
+        </Suspense>
+      }
+    >
+      <FinancesOverviewStreamingBody {...props} />
     </FinancesShell>
   )
 }
@@ -1874,7 +1914,216 @@ function SettingRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function FinancesPage({
+function TransactionTabSkeleton() {
+  return (
+    <>
+      <section className="sticky top-0 z-20 bg-background py-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Showing All
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex h-8 items-center border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase">
+              FILTER
+            </span>
+            <span className="inline-flex h-8 items-center border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase">
+              + New Transaction
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section className="py-6" aria-hidden="true">
+        <div className="border-y border-border">
+          {Array.from({ length: 2 }).map((_, groupIndex) => (
+            <div
+              key={groupIndex}
+              className="border-b border-border last:border-b-0"
+            >
+              <div className="sticky top-0 z-10 bg-background py-3">
+                <Skeleton className="h-3 w-24" />
+              </div>
+              {Array.from({ length: 3 }).map((__, rowIndex) => (
+                <div
+                  key={rowIndex}
+                  className="grid gap-3 border-b border-border py-5 last:border-b-0 sm:grid-cols-[1fr_auto] sm:items-center"
+                >
+                  <div className="min-w-0">
+                    <Skeleton className="h-5 w-48 max-w-full" />
+                    <Skeleton className="mt-2 h-4 w-72 max-w-full" />
+                  </div>
+                  <Skeleton className="h-6 w-28" />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </section>
+    </>
+  )
+}
+
+function RecurringPaymentsTabSkeleton() {
+  return (
+    <section className="space-y-6 py-6" aria-hidden="true">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Scheduled templates
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">Recurring payments</h2>
+          <Skeleton className="mt-2 h-5 w-96 max-w-full" />
+        </div>
+        <Skeleton className="h-8 w-44" />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <div className="border border-border p-4">
+          <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+            Active
+          </p>
+          <Skeleton className="mt-3 h-8 w-12" />
+        </div>
+        <div className="border border-border p-4 md:col-span-2">
+          <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+            Next due
+          </p>
+          <Skeleton className="mt-3 h-6 w-80 max-w-full" />
+        </div>
+      </div>
+
+      <div className="border-y border-border">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <article
+            key={index}
+            className="grid gap-4 border-b border-border py-5 last:border-b-0 lg:grid-cols-[1fr_auto] lg:items-start"
+          >
+            <div className="min-w-0">
+              <Skeleton className="h-3 w-44" />
+              <Skeleton className="mt-2 h-7 w-56 max-w-full" />
+              <Skeleton className="mt-2 h-5 w-80 max-w-full" />
+            </div>
+            <div className="space-y-3 lg:min-w-52 lg:text-right">
+              <Skeleton className="h-7 w-28 lg:ml-auto" />
+              <Skeleton className="h-3 w-36 lg:ml-auto" />
+              <Skeleton className="h-8 w-44 lg:ml-auto" />
+            </div>
+          </article>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ManageTabSkeleton() {
+  return (
+    <section className="space-y-8 py-6" aria-hidden="true">
+      <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                Accounts
+              </p>
+              <Skeleton className="mt-1 h-5 w-72 max-w-full" />
+            </div>
+            <Skeleton className="h-8 w-32" />
+          </div>
+
+          <div className="border-y border-border">
+            {Array.from({ length: 4 }).map((_, index) => (
+              <article
+                key={index}
+                className="grid gap-3 border-b border-border py-4 pe-12 last:border-b-0 sm:grid-cols-[1fr_auto] sm:items-center"
+              >
+                <div className="min-w-0">
+                  <Skeleton className="h-3 w-32" />
+                  <Skeleton className="mt-2 h-6 w-48 max-w-full" />
+                </div>
+                <Skeleton className="h-7 w-32" />
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-8">
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                  Categories
+                </p>
+                <Skeleton className="mt-1 h-5 w-52" />
+              </div>
+              <Skeleton className="h-8 w-32" />
+            </div>
+
+            {["Income", "Expense"].map((label) => (
+              <div key={label}>
+                <p className="mb-2 font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                  {label}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Skeleton className="h-8 w-24" />
+                  <Skeleton className="h-8 w-28" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                Finance settings
+              </p>
+              <Skeleton className="mt-1 h-5 w-72 max-w-full" />
+            </div>
+            <dl className="grid gap-3 border-y border-border py-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between gap-4"
+                >
+                  <Skeleton className="h-3 w-28" />
+                  <Skeleton className="h-4 w-20" />
+                </div>
+              ))}
+            </dl>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+export function FinancesTabSkeleton({ tab }: { tab: FinanceTab }) {
+  if (tab === "overview") {
+    return (
+      <section className="space-y-10 py-6">
+        <OverviewNetWorthSkeleton baseCurrency="USD" />
+        <OverviewStatementSkeleton />
+        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <OverviewCashflowChartSkeleton chartPeriod="monthly" />
+          <OverviewExpenseBreakdownSkeleton />
+        </div>
+        <OverviewAccountsSkeleton />
+        <OverviewNotableSignalsSkeleton />
+      </section>
+    )
+  }
+
+  if (tab === "transactions") {
+    return <TransactionTabSkeleton />
+  }
+
+  if (tab === "recurring") {
+    return <RecurringPaymentsTabSkeleton />
+  }
+
+  return <ManageTabSkeleton />
+}
+
+export function FinancesTabBody({
   accountBalances,
   accounts,
   categories,
@@ -1902,18 +2151,7 @@ export function FinancesPage({
     .filter((name): name is string => Boolean(name))
 
   return (
-    <FinancesShell
-      tab={tab}
-      aside={
-        <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
-          {tab === "manage"
-            ? "Manage"
-            : tab === "recurring"
-              ? `${recurringPayments.length} recurring`
-              : `${transactions.length} transactions`}
-        </p>
-      }
-    >
+    <>
       {tab === "overview" ? (
         <OverviewTab
           accountBalances={accountBalances}
@@ -1958,6 +2196,23 @@ export function FinancesPage({
           financeSettings={financeSettings}
         />
       ) : null}
+    </>
+  )
+}
+
+export function FinancesPage(props: FinancesPageProps) {
+  return (
+    <FinancesShell
+      tab={props.tab}
+      aside={
+        <FinancesHeaderAside
+          recurringCount={props.recurringPayments?.length ?? 0}
+          tab={props.tab}
+          transactionCount={props.transactions.length}
+        />
+      }
+    >
+      <FinancesTabBody {...props} />
     </FinancesShell>
   )
 }

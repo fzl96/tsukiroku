@@ -159,6 +159,52 @@ const recurringPayment = {
 } as RecurringPayment
 
 describe("FinancesPage", () => {
+  test("renders tab-specific skeletons that match each tab body", async () => {
+    const { FinancesTabSkeleton } =
+      await import("@/features/finances/components/finances-page")
+
+    const overviewHtml = renderToStaticMarkup(
+      <FinancesTabSkeleton tab="overview" />
+    )
+    const transactionsHtml = renderToStaticMarkup(
+      <FinancesTabSkeleton tab="transactions" />
+    )
+    const recurringHtml = renderToStaticMarkup(
+      <FinancesTabSkeleton tab="recurring" />
+    )
+    const manageHtml = renderToStaticMarkup(
+      <FinancesTabSkeleton tab="manage" />
+    )
+
+    expect(overviewHtml).toContain("Net worth")
+    expect(overviewHtml).toContain("Cashflow")
+    expect(overviewHtml).toContain("Accounts")
+
+    expect(transactionsHtml).toContain("Showing All")
+    expect(transactionsHtml).toContain("FILTER")
+    expect(transactionsHtml).toContain("+ New Transaction")
+    expect(transactionsHtml).toContain("border-b border-border py-5")
+
+    expect(recurringHtml).toContain("Scheduled templates")
+    expect(recurringHtml).toContain("Recurring payments")
+    expect(recurringHtml).toContain("Active")
+    expect(recurringHtml).toContain("Next due")
+
+    expect(manageHtml).toContain("Accounts")
+    expect(manageHtml).toContain("Categories")
+    expect(manageHtml).toContain("Finance settings")
+    expect(manageHtml).toContain("border-y border-border")
+  })
+
+  test("renders overview skeletons without divs nested inside paragraphs", async () => {
+    const { FinancesTabSkeleton } =
+      await import("@/features/finances/components/finances-page")
+
+    const html = renderToStaticMarkup(<FinancesTabSkeleton tab="overview" />)
+
+    expect(html).not.toMatch(/<p[^>]*>\s*<div[^>]*data-slot="skeleton"/)
+  })
+
   test("renders streaming overview shell with section skeletons while data is pending", async () => {
     const { FinancesOverviewStreamingPage } =
       await import("@/features/finances/components/finances-page")
