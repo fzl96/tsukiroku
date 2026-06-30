@@ -39,11 +39,10 @@ against the project JWKS (fetched once, then cached). Keep the React `cache()`
 wrapper for per-request dedup. `getClaims` falls back to a network call
 automatically when it cannot verify locally, so behavior degrades gracefully.
 
-**Prerequisite:** Local verification only avoids the network hop if the Supabase
-project uses **asymmetric JWT signing keys** (the newer default). If the project
-is still on the legacy HS256 shared secret, `getClaims` falls back to network.
-Step one is to confirm/enable JWT signing keys in the Supabase dashboard. Code
-is written to verify locally and degrade gracefully regardless.
+**Prerequisite — confirmed met:** The project's JWT signing key is **ECC
+(P-256) → ES256, asymmetric**. Local verification is therefore the real path and
+the latency win applies. Code still verifies locally and degrades gracefully if
+keys ever change.
 
 **Shape:** `getCurrentUser` returns the same `{ id, email }` shape, derived from
 claims (`sub`, `email`) instead of the `user` object.
@@ -74,16 +73,19 @@ aggregation is measured to be slow.
 
 **Problem:** Two issues. (a) `DATABASE_URL` currently targets the Supabase
 **session pooler** (`aws-1-ap-southeast-1.pooler.supabase.com:5432`,
-user `postgres.<ref>`), which holds a server connection for the whole function
-invocation — suboptimal for Vercel fan-out. (b) `src/db/index.ts` sets `max: 1`,
-so the page's `Promise.all` reads serialize over a single connection instead of
-overlapping.
+user `postgres.<ref>`) — chosen for IPv4 compatibility (the direct connection is
+IPv6-only without the paid add-on, and Vercel needs IPv4) — but session mode
+holds a server connection for the whole function invocation, suboptimal for
+Vercel fan-out. (b) `src/db/index.ts` sets `max: 1`, so the page's `Promise.all`
+reads serialize over a single connection instead of overlapping.
 
 **Change:**
 - Point the **runtime** `DATABASE_URL` at the Supabase **transaction pooler**:
-  same host and user, port `5432` → `6543`. The transaction pooler returns the
-  connection to the pool after each transaction. It *requires* `prepare: false`,
-  which the client already sets — so this is a low-risk, port-only change.
+  same host and user, port `5432` → `6543`. The transaction pooler is also
+  IPv4-proxied on the same `pooler.supabase.com` host, so IPv4 compatibility is
+  preserved. It returns the connection to the pool after each transaction and
+  *requires* `prepare: false`, which the client already sets — so this is a
+  low-risk, port-only change.
 - Raise `max` to a small value (≈3) to allow in-request parallelism; add
   `idle_timeout` and `connect_timeout`. `max` stays small so many concurrent
   lambda instances don't exhaust the pooler's connection limit.
@@ -137,8 +139,8 @@ pursued later.
 
 ## Risks
 
-- **Auth:** if signing keys are not enabled, no latency win (but no regression —
-  graceful fallback). Mitigated by making key enablement step one.
+- **Auth:** signing keys confirmed ES256, so the latency win applies; code still
+  degrades gracefully if keys ever change. No regression risk.
 - **Pool:** too-high `max` risks pooler exhaustion under fan-out. Mitigated by
   keeping `max` small (≈3) and verifying the pooler endpoint.
 - **Cache staleness:** a missed `revalidateTag` shows stale accounts/categories.
