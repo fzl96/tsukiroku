@@ -1,0 +1,133 @@
+# Performance Pass — Design
+
+**Date:** 2026-06-30
+**Status:** Approved (design), pending implementation plan
+**Deployment target:** Vercel / serverless
+
+## Goal
+
+Reduce per-request latency and remove the data-growth scaling cliff on the
+finances page, proactively (the app is not painfully slow yet). Four
+independent workstreams, ordered by impact on serverless.
+
+## Context
+
+The finances route (`src/app/(dashboard)/finances/page.tsx`) runs, per load:
+`requireUser()` → settings → `Promise.all([accounts, categories])` → tab-gated
+`Promise.all([transactions, balances, recurring])`. Queries already take
+`userId` as a plain argument and are de-N+1'd. Indexes on `transaction`
+(`user_id, occurred_at`, plus account/category/recurring variants) already cover
+the main filters and are **not** changed by this work.
+
+Verified facts:
+- `supabase.auth.getClaims()` is available in the installed `@supabase/auth-js`.
+- Next 16 `unstable_cache` works without the `cacheComponents` flag, but
+  **cannot read `cookies`/`headers` inside the cached function** — so cached
+  queries must receive `userId` as an argument (they already do) and the user is
+  resolved before the cache scope.
+
+## Workstreams
+
+### 1. Local JWT auth verification
+
+**Problem:** `getCurrentUser()` in `src/lib/auth.ts` calls
+`supabase.auth.getUser()`, a network round-trip to Supabase Auth on the critical
+path of every page load (including cold starts).
+
+**Change:** Use `supabase.auth.getClaims()`, which verifies the JWT locally
+against the project JWKS (fetched once, then cached). Keep the React `cache()`
+wrapper for per-request dedup. `getClaims` falls back to a network call
+automatically when it cannot verify locally, so behavior degrades gracefully.
+
+**Prerequisite:** Local verification only avoids the network hop if the Supabase
+project uses **asymmetric JWT signing keys** (the newer default). If the project
+is still on the legacy HS256 shared secret, `getClaims` falls back to network.
+Step one is to confirm/enable JWT signing keys in the Supabase dashboard. Code
+is written to verify locally and degrade gracefully regardless.
+
+**Shape:** `getCurrentUser` returns the same `{ id, email }` shape, derived from
+claims (`sub`, `email`) instead of the `user` object.
+
+### 2. Balance aggregation in Postgres
+
+**Problem:** `getAccountBalances` (`src/features/accounts/queries.ts`) pulls
+**every** POSTED transaction row into JS and reduces in memory. Cost grows
+linearly with history forever and transfers a large result set from a remote DB.
+
+**Change:** Replace the full-history fetch with two grouped aggregates:
+- `GROUP BY accountId, type` → income / expense / transfer-out sums per account.
+- `GROUP BY transferAccountId WHERE type = 'TRANSFER'` → transfer-in sums per
+  account.
+
+This transfers O(accounts × types) rows instead of O(transactions). The pure
+reducer `computeAccountBalances` (`src/features/accounts/balances.ts`) is kept
+and refactored to consume **pre-aggregated rows** rather than raw transactions,
+so `balances.test.ts` continues to exercise the balance math. Final per-account
+balance = `initialBalance + income − expense − transferOut + transferIn`.
+
+**Decision A (settled):** On-the-fly SQL aggregation, **not** a maintained
+balance column. Accurate, no invalidation complexity, supported by existing
+indexes. A maintained/materialized column is explicitly deferred (YAGNI) until
+aggregation is measured to be slow.
+
+### 3. Connection pool tuning for serverless
+
+**Problem:** `src/db/index.ts` sets `max: 1`, so the page's `Promise.all` reads
+serialize over a single connection instead of overlapping.
+
+**Change:** Raise `max` to a small value (≈3) to allow in-request parallelism,
+keep `prepare: false`, add `idle_timeout` and `connect_timeout`, and confirm the
+`DATABASE_URL` points at Supabase's **transaction pooler (port 6543)**, not the
+direct connection. `max` stays small so many concurrent lambda instances don't
+exhaust the pooler's connection limit. Config + verification, minimal code.
+
+### 4. Next data cache for low-churn reads
+
+**Problem:** `listFinancialAccounts`, `listCategories`, and
+`getUserFinanceSettings` are re-fetched every navigation though they rarely
+change.
+
+**Change:** Wrap each in `unstable_cache`, keyed and tagged per user
+(`accounts:${userId}`, `categories:${userId}`, `settings:${userId}`).
+`userId` is resolved outside the cache scope and passed in (cookies/headers must
+not be read inside). Invalidate with `revalidateTag` inside the existing
+`actions.ts` mutations, alongside the current `revalidatePath` calls:
+- `accounts/actions.ts` → `revalidateTag('accounts:${userId}')`
+- `categories/actions.ts` → `revalidateTag('categories:${userId}')`
+- `settings/actions.ts` → `revalidateTag('settings:${userId}')`
+
+**Transactions stay uncached** — high churn and filter/period-dependent keys make
+caching net-negative. Recurring payments stay uncached for the same churn
+reasons.
+
+**Decision B (settled):** `unstable_cache` with per-user tags, **not** the Next
+16 Cache Components migration. No app-wide rendering-default flip; lowest risk
+for a per-user dynamic app. Cache Components is a separate, larger migration if
+pursued later.
+
+## Out of scope
+
+- Index changes (already adequate).
+- Maintained/materialized balance column (Decision A).
+- Caching transaction lists or recurring payments.
+- `cacheComponents` / `'use cache'` migration (Decision B).
+
+## Testing
+
+- **Unit:** `computeAccountBalances` keeps its tests against the refactored
+  pre-aggregated input shape. A new test asserts the SQL-aggregation mapping
+  produces the same balances as the previous full-scan reducer over a fixture.
+- **Manual against the running app:** auth still works (and falls back when
+  signing keys are absent); cache invalidation — after creating/editing an
+  account/category/settings the finances page reflects the change immediately;
+  balances match expectations after income/expense/transfer mutations.
+
+## Risks
+
+- **Auth:** if signing keys are not enabled, no latency win (but no regression —
+  graceful fallback). Mitigated by making key enablement step one.
+- **Pool:** too-high `max` risks pooler exhaustion under fan-out. Mitigated by
+  keeping `max` small (≈3) and verifying the pooler endpoint.
+- **Cache staleness:** a missed `revalidateTag` shows stale accounts/categories.
+  Mitigated by adding the tag invalidation in the same helper that already calls
+  `revalidatePath`, and by a short `revalidate` TTL as a backstop.
