@@ -3,8 +3,10 @@ import { defineConfig } from "drizzle-kit"
 
 loadEnvConfig(process.cwd())
 
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL is required to run Drizzle commands")
+const migrationUrl = process.env.DIRECT_URL ?? process.env.DATABASE_URL
+
+if (!migrationUrl) {
+  throw new Error("DATABASE_URL or DIRECT_URL is required to run Drizzle commands")
 }
 
 export default defineConfig({
@@ -12,6 +14,6 @@ export default defineConfig({
   out: "./src/db/migrations",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    url: migrationUrl,
   },
 })
