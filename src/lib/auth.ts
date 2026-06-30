@@ -10,18 +10,17 @@ export type CurrentUser = {
 
 export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   const supabase = await createClient()
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !user) {
+  if (error || !data?.claims) {
     return null
   }
 
+  const { claims } = data
+
   return {
-    id: user.id,
-    email: user.email ?? null,
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : null,
   }
 })
 
