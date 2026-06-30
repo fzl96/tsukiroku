@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Suspense } from "react"
 import { addDays } from "date-fns"
 
 import type {
@@ -50,6 +51,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   formatDateForUser,
   getDateInputValueInTimeZone,
@@ -184,6 +186,15 @@ function groupTransactions(transactions: Transaction[], timezone: string) {
     groups.push({ label, transactions: [transaction] })
     return groups
   }, [])
+}
+
+function getBaseCurrencyTransactions(
+  transactions: Transaction[],
+  baseCurrency: string
+) {
+  return transactions.filter(
+    (transaction) => transaction.currency === baseCurrency
+  )
 }
 
 function buildHref(
@@ -838,6 +849,408 @@ function NotableSignals({
   )
 }
 
+function OverviewNetWorthSkeleton({ baseCurrency }: { baseCurrency: string }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-border pb-7">
+      <div>
+        <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+          Net worth
+        </p>
+        <Skeleton className="mt-3 h-14 w-64 max-w-full sm:h-16" />
+      </div>
+      <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+        <Skeleton
+          className="h-4 w-44"
+          aria-label={`Loading ${baseCurrency} accounts`}
+        />
+      </p>
+    </div>
+  )
+}
+
+function OverviewStatementSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            This month / statement
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">In, out, and kept</h2>
+        </div>
+        <Skeleton className="h-7 w-28" />
+      </div>
+
+      <div className="border-y border-border">
+        <div className="flex flex-col sm:flex-row">
+          {["Money in", "Money out", "Kept"].map((label) => (
+            <div
+              key={label}
+              className="flex-1 px-5 py-4 first:pl-0 sm:border-l sm:border-border sm:first:border-l-0"
+            >
+              <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+                {label}
+              </p>
+              <Skeleton className="mt-2 h-7 w-28" />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <Skeleton className="h-3 w-full" />
+        <Skeleton className="mt-2 h-5 w-72 max-w-full" />
+      </div>
+    </div>
+  )
+}
+
+function OverviewCashflowChartSkeleton({
+  chartPeriod,
+}: {
+  chartPeriod: OverviewChartPeriod
+}) {
+  return (
+    <div className="space-y-4 border border-border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Cashflow
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">Income and expenses</h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(["monthly", "daily"] as const).map((period) => (
+            <FilterLink
+              key={period}
+              active={chartPeriod === period}
+              fallbackToneClassName=""
+              href={buildOverviewChartHref(period)}
+            >
+              {chartPeriodLabels[period]}
+            </FilterLink>
+          ))}
+        </div>
+      </div>
+      <Skeleton className="min-h-72 w-full" />
+    </div>
+  )
+}
+
+function OverviewExpenseBreakdownSkeleton() {
+  return (
+    <div className="flex h-full flex-col border border-border p-4">
+      <div className="flex items-end justify-between gap-4 border-b border-border pb-3">
+        <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+          Where it went
+        </p>
+        <Skeleton className="h-5 w-24" />
+      </div>
+      <div className="mt-1">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div
+            key={index}
+            className="border-b border-border py-3 last:border-b-0"
+          >
+            <div className="flex items-baseline justify-between gap-4">
+              <span className="flex min-w-0 items-center gap-2">
+                <Skeleton className="size-2 shrink-0 rounded-full" />
+                <Skeleton className="h-4 w-28" />
+              </span>
+              <span className="flex shrink-0 items-baseline gap-3">
+                <Skeleton className="h-3 w-8" />
+                <Skeleton className="h-4 w-20" />
+              </span>
+            </div>
+            <Skeleton className="mt-2 h-1 w-full" />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OverviewAccountsSkeleton() {
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Accounts
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">Where it sits</h2>
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <article
+            key={index}
+            className="relative border border-border p-4 pe-12"
+          >
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="mt-3 h-6 w-32" />
+            <Skeleton className="mt-5 h-8 w-36" />
+            <div className="mt-4 flex items-center justify-between gap-4">
+              <Skeleton className="h-3 w-10" />
+              <Skeleton className="h-3 w-14" />
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function OverviewNotableSignalsSkeleton() {
+  const labels = [
+    "Largest single expense",
+    "Top expense category",
+    "Posted entries",
+  ]
+
+  return (
+    <div className="grid border-y border-border sm:grid-cols-3">
+      {labels.map((label) => (
+        <div
+          key={label}
+          className="border-b border-border px-5 py-4 first:pl-0 last:border-b-0 sm:border-b-0 sm:border-l sm:border-border sm:first:border-l-0"
+        >
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            {label}
+          </p>
+          <Skeleton className="mt-2 h-6 w-24" />
+          <Skeleton className="mt-2 h-5 w-40 max-w-full" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+async function OverviewTransactionCount({
+  transactionsPromise,
+}: {
+  transactionsPromise: Promise<Transaction[]>
+}) {
+  const transactions = await transactionsPromise
+
+  return (
+    <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
+      {transactions.length} transactions
+    </p>
+  )
+}
+
+function OverviewTransactionCountSkeleton() {
+  return (
+    <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
+      Loading transactions
+    </p>
+  )
+}
+
+async function OverviewNetWorthSection({
+  accountBalancesPromise,
+  financeSettings,
+}: {
+  accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
+  financeSettings: FinancesPageProps["financeSettings"]
+}) {
+  const accountBalances = await accountBalancesPromise
+  const netWorth = getNetWorthSummary(
+    accountBalances,
+    financeSettings.baseCurrency
+  )
+
+  return (
+    <NetWorthMasthead
+      amount={netWorth.amount}
+      baseAccountCount={netWorth.baseAccountCount}
+      baseCurrency={financeSettings.baseCurrency}
+      otherCurrencyCount={netWorth.otherCurrencyCount}
+    />
+  )
+}
+
+async function OverviewStatementSection({
+  financeSettings,
+  transactionsPromise,
+}: {
+  financeSettings: FinancesPageProps["financeSettings"]
+  transactionsPromise: Promise<Transaction[]>
+}) {
+  const transactions = await transactionsPromise
+  const monthStats = getMonthOverviewStats(
+    getBaseCurrencyTransactions(transactions, financeSettings.baseCurrency),
+    [],
+    new Date(),
+    {
+      monthStartDay: financeSettings.monthStartDay,
+      timezone: financeSettings.timezone,
+    }
+  )
+
+  return (
+    <MonthStatement
+      baseCurrency={financeSettings.baseCurrency}
+      statement={getMonthStatement(monthStats)}
+    />
+  )
+}
+
+async function OverviewCashflowChartSection({
+  chartPeriod,
+  financeSettings,
+  transactionsPromise,
+}: {
+  chartPeriod: OverviewChartPeriod
+  financeSettings: FinancesPageProps["financeSettings"]
+  transactionsPromise: Promise<Transaction[]>
+}) {
+  const transactions = await transactionsPromise
+  const now = new Date()
+  const baseCurrencyTransactions = getBaseCurrencyTransactions(
+    transactions,
+    financeSettings.baseCurrency
+  )
+  const chartData =
+    chartPeriod === "daily"
+      ? buildWeeklyCashflowBuckets(
+          baseCurrencyTransactions,
+          now,
+          financeSettings.timezone,
+          financeSettings.weekStartsOn
+        )
+      : buildMonthlyCashflowBuckets(
+          baseCurrencyTransactions,
+          now,
+          financeSettings.timezone
+        )
+
+  return (
+    <div className="space-y-4 border border-border p-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Cashflow
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">Income and expenses</h2>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(["monthly", "daily"] as const).map((period) => (
+            <FilterLink
+              key={period}
+              active={chartPeriod === period}
+              fallbackToneClassName=""
+              href={buildOverviewChartHref(period)}
+            >
+              {chartPeriodLabels[period]}
+            </FilterLink>
+          ))}
+        </div>
+      </div>
+      <OverviewCashflowChart
+        currency={financeSettings.baseCurrency}
+        data={chartData}
+      />
+    </div>
+  )
+}
+
+async function OverviewExpenseBreakdownSection({
+  categoriesPromise,
+  financeSettings,
+  transactionsPromise,
+}: {
+  categoriesPromise: Promise<Category[]>
+  financeSettings: FinancesPageProps["financeSettings"]
+  transactionsPromise: Promise<Transaction[]>
+}) {
+  const [categories, transactions] = await Promise.all([
+    categoriesPromise,
+    transactionsPromise,
+  ])
+  const expenseBreakdown = getMonthExpenseBreakdown(
+    getBaseCurrencyTransactions(transactions, financeSettings.baseCurrency),
+    categories,
+    new Date(),
+    {
+      monthStartDay: financeSettings.monthStartDay,
+      timezone: financeSettings.timezone,
+    }
+  )
+
+  return (
+    <>
+      <ExpenseBreakdownPanel
+        baseCurrency={financeSettings.baseCurrency}
+        breakdown={expenseBreakdown}
+      />
+    </>
+  )
+}
+
+async function OverviewAccountsSection({
+  accountBalancesPromise,
+  accountsPromise,
+}: {
+  accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
+  accountsPromise: Promise<FinancialAccount[]>
+}) {
+  const [accounts, accountBalances] = await Promise.all([
+    accountsPromise,
+    accountBalancesPromise,
+  ])
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+            Accounts
+          </p>
+          <h2 className="mt-2 text-2xl leading-8">Where it sits</h2>
+        </div>
+      </div>
+      <AccountCards
+        accounts={accounts}
+        balances={accountBalances}
+        selectedAccountIds={[]}
+      />
+    </div>
+  )
+}
+
+async function OverviewNotableSignalsSection({
+  categoriesPromise,
+  financeSettings,
+  transactionsPromise,
+}: {
+  categoriesPromise: Promise<Category[]>
+  financeSettings: FinancesPageProps["financeSettings"]
+  transactionsPromise: Promise<Transaction[]>
+}) {
+  const [categories, transactions] = await Promise.all([
+    categoriesPromise,
+    transactionsPromise,
+  ])
+  const monthStats = getMonthOverviewStats(
+    getBaseCurrencyTransactions(transactions, financeSettings.baseCurrency),
+    categories,
+    new Date(),
+    {
+      monthStartDay: financeSettings.monthStartDay,
+      timezone: financeSettings.timezone,
+    }
+  )
+
+  return (
+    <NotableSignals
+      baseCurrency={financeSettings.baseCurrency}
+      monthStats={monthStats}
+    />
+  )
+}
+
 function OverviewTab({
   accountBalances,
   accounts,
@@ -854,8 +1267,9 @@ function OverviewTab({
   transactions: Transaction[]
 }) {
   const now = new Date()
-  const baseCurrencyTransactions = transactions.filter(
-    (transaction) => transaction.currency === financeSettings.baseCurrency
+  const baseCurrencyTransactions = getBaseCurrencyTransactions(
+    transactions,
+    financeSettings.baseCurrency
   )
   const chartData =
     chartPeriod === "daily"
@@ -963,6 +1377,125 @@ function OverviewTab({
         monthStats={monthStats}
       />
     </section>
+  )
+}
+
+function FinancesShell({
+  aside,
+  children,
+  tab,
+}: React.PropsWithChildren<{
+  aside?: React.ReactNode
+  tab: FinanceTab
+}>) {
+  return (
+    <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-10 lg:px-16">
+      <div className="mx-auto max-w-[1180px]">
+        <header className="border-b border-border pb-9">
+          <div className="flex items-start justify-between gap-6">
+            <div>
+              <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+                Ledger
+              </p>
+              <h1 className="mt-2 font-heading text-5xl leading-none tracking-tight sm:text-6xl">
+                Finances
+              </h1>
+            </div>
+            {aside}
+          </div>
+        </header>
+
+        <FinanceTabs activeTab={tab} />
+
+        {children}
+      </div>
+    </main>
+  )
+}
+
+export function FinancesOverviewStreamingPage({
+  accountBalancesPromise,
+  accountsPromise,
+  categoriesPromise,
+  chartPeriod,
+  financeSettings,
+  transactionsPromise,
+}: {
+  accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
+  accountsPromise: Promise<FinancialAccount[]>
+  categoriesPromise: Promise<Category[]>
+  chartPeriod: OverviewChartPeriod
+  financeSettings: FinancesPageProps["financeSettings"]
+  transactionsPromise: Promise<Transaction[]>
+}) {
+  return (
+    <FinancesShell
+      tab="overview"
+      aside={
+        <Suspense fallback={<OverviewTransactionCountSkeleton />}>
+          <OverviewTransactionCount transactionsPromise={transactionsPromise} />
+        </Suspense>
+      }
+    >
+      <section className="space-y-10 py-6">
+        <Suspense
+          fallback={
+            <OverviewNetWorthSkeleton
+              baseCurrency={financeSettings.baseCurrency}
+            />
+          }
+        >
+          <OverviewNetWorthSection
+            accountBalancesPromise={accountBalancesPromise}
+            financeSettings={financeSettings}
+          />
+        </Suspense>
+
+        <Suspense fallback={<OverviewStatementSkeleton />}>
+          <OverviewStatementSection
+            financeSettings={financeSettings}
+            transactionsPromise={transactionsPromise}
+          />
+        </Suspense>
+
+        <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+          <Suspense
+            fallback={
+              <OverviewCashflowChartSkeleton chartPeriod={chartPeriod} />
+            }
+          >
+            <OverviewCashflowChartSection
+              chartPeriod={chartPeriod}
+              financeSettings={financeSettings}
+              transactionsPromise={transactionsPromise}
+            />
+          </Suspense>
+
+          <Suspense fallback={<OverviewExpenseBreakdownSkeleton />}>
+            <OverviewExpenseBreakdownSection
+              categoriesPromise={categoriesPromise}
+              financeSettings={financeSettings}
+              transactionsPromise={transactionsPromise}
+            />
+          </Suspense>
+        </div>
+
+        <Suspense fallback={<OverviewAccountsSkeleton />}>
+          <OverviewAccountsSection
+            accountBalancesPromise={accountBalancesPromise}
+            accountsPromise={accountsPromise}
+          />
+        </Suspense>
+
+        <Suspense fallback={<OverviewNotableSignalsSkeleton />}>
+          <OverviewNotableSignalsSection
+            categoriesPromise={categoriesPromise}
+            financeSettings={financeSettings}
+            transactionsPromise={transactionsPromise}
+          />
+        </Suspense>
+      </section>
+    </FinancesShell>
   )
 }
 
@@ -1394,72 +1927,59 @@ export function FinancesPage({
     .filter((name): name is string => Boolean(name))
 
   return (
-    <main className="min-h-screen bg-background px-5 py-8 text-foreground sm:px-10 lg:px-16">
-      <div className="mx-auto max-w-[1180px]">
-        <header className="border-b border-border pb-9">
-          <div className="flex items-start justify-between gap-6">
-            <div>
-              <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-                Ledger
-              </p>
-              <h1 className="mt-2 font-heading text-5xl leading-none tracking-tight sm:text-6xl">
-                Finances
-              </h1>
-            </div>
-            <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
-              {tab === "manage"
-                ? "Manage"
-                : tab === "recurring"
-                  ? `${recurringPayments.length} recurring`
-                  : `${transactions.length} transactions`}
-            </p>
-          </div>
-        </header>
+    <FinancesShell
+      tab={tab}
+      aside={
+        <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
+          {tab === "manage"
+            ? "Manage"
+            : tab === "recurring"
+              ? `${recurringPayments.length} recurring`
+              : `${transactions.length} transactions`}
+        </p>
+      }
+    >
+      {tab === "overview" ? (
+        <OverviewTab
+          accountBalances={accountBalances}
+          accounts={accounts}
+          categories={categories}
+          chartPeriod={chartPeriod}
+          financeSettings={financeSettings}
+          transactions={transactions}
+        />
+      ) : null}
 
-        <FinanceTabs activeTab={tab} />
+      {tab === "transactions" ? (
+        <TransactionTab
+          accountBalances={accountBalances}
+          accounts={accounts}
+          activeAccounts={activeAccounts}
+          activeCategories={activeCategories}
+          categories={categories}
+          filters={filters}
+          groupedTransactions={groupedTransactions}
+          timezone={timezone}
+        />
+      ) : null}
 
-        {tab === "overview" ? (
-          <OverviewTab
-            accountBalances={accountBalances}
-            accounts={accounts}
-            categories={categories}
-            chartPeriod={chartPeriod}
-            financeSettings={financeSettings}
-            transactions={transactions}
-          />
-        ) : null}
+      {tab === "recurring" ? (
+        <RecurringPaymentsTab
+          accounts={accounts}
+          categories={categories}
+          recurringPayments={recurringPayments}
+          timezone={timezone}
+        />
+      ) : null}
 
-        {tab === "transactions" ? (
-          <TransactionTab
-            accountBalances={accountBalances}
-            accounts={accounts}
-            activeAccounts={activeAccounts}
-            activeCategories={activeCategories}
-            categories={categories}
-            filters={filters}
-            groupedTransactions={groupedTransactions}
-            timezone={timezone}
-          />
-        ) : null}
-
-        {tab === "recurring" ? (
-          <RecurringPaymentsTab
-            accounts={accounts}
-            categories={categories}
-            recurringPayments={recurringPayments}
-            timezone={timezone}
-          />
-        ) : null}
-
-        {tab === "manage" ? (
-          <ManageTab
-            accountBalances={accountBalances}
-            accounts={accounts}
-            categories={categories}
-            financeSettings={financeSettings}
-          />
-        ) : null}
-      </div>
-    </main>
+      {tab === "manage" ? (
+        <ManageTab
+          accountBalances={accountBalances}
+          accounts={accounts}
+          categories={categories}
+          financeSettings={financeSettings}
+        />
+      ) : null}
+    </FinancesShell>
   )
 }

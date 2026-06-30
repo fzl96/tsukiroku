@@ -6,7 +6,10 @@ import {
 } from "@/features/accounts/queries"
 import { getCachedCategories } from "@/features/categories/queries"
 import { FinanceTimezoneInitializer } from "@/features/finances/components/finance-timezone-initializer"
-import { FinancesPage } from "@/features/finances/components/finances-page"
+import {
+  FinancesOverviewStreamingPage,
+  FinancesPage,
+} from "@/features/finances/components/finances-page"
 import { FinancesPageSkeleton } from "@/features/finances/components/finances-page-skeleton"
 import {
   getPeriodRange,
@@ -17,11 +20,18 @@ import {
   parseTransactionTypeFilter,
 } from "@/features/finances/filters"
 import {
+  DEFAULT_VISIBLE_TRANSACTION_DAYS,
+  DEFAULT_VISIBLE_TRANSACTIONS_PER_DAY,
+} from "@/features/finances/transaction-list"
+import {
   createDefaultFinanceSettings,
   getCachedUserFinanceSettings,
 } from "@/features/settings/service"
 import { listRecurringPayments } from "@/features/recurring-payments/queries"
-import { listTransactions } from "@/features/transactions/queries"
+import {
+  listInitialTransactions,
+  listTransactions,
+} from "@/features/transactions/queries"
 import { requireUser } from "@/lib/auth"
 
 type FinancesSearchParams = Promise<{
@@ -79,27 +89,59 @@ async function FinancesContent({
     ...(type !== "all" ? { type } : {}),
   }
 
-  // Only the overview and transactions tabs render the transaction list and
-  // derived stats; balances are needed everywhere except recurring.
-  const needsTransactions = tab === "overview" || tab === "transactions"
+  const accountsPromise = getCachedFinancialAccounts(user.id)
+  const categoriesPromise = getCachedCategories(user.id)
+
+  if (tab === "overview") {
+    const transactionsPromise = listTransactions(user.id, transactionFilters)
+    const accountBalancesPromise = accountsPromise.then((accounts) =>
+      getAccountBalances(user.id, accounts)
+    )
+
+    return (
+      <>
+        {!existingSettings ? (
+          <FinanceTimezoneInitializer
+            baseCurrency={settings.baseCurrency}
+            monthStartDay={settings.monthStartDay}
+            timezone={settings.timezone}
+            weekStartsOn={settings.weekStartsOn}
+          />
+        ) : null}
+        <FinancesOverviewStreamingPage
+          accountBalancesPromise={accountBalancesPromise}
+          accountsPromise={accountsPromise}
+          categoriesPromise={categoriesPromise}
+          chartPeriod={chartPeriod}
+          financeSettings={settings}
+          transactionsPromise={transactionsPromise}
+        />
+      </>
+    )
+  }
+
+  // Only the transactions tab renders the transaction list here; overview uses
+  // nested Suspense boundaries so each section can stream independently.
+  const needsTransactions = tab === "transactions"
   const needsBalances = tab !== "recurring"
   const needsRecurring = tab === "recurring"
 
-  // Always-needed, lightweight reads run together.
   const [accounts, categories] = await Promise.all([
-    getCachedFinancialAccounts(user.id),
-    getCachedCategories(user.id),
+    accountsPromise,
+    categoriesPromise,
   ])
 
   // Tab-specific, heavier reads run in parallel and are skipped when the active
   // tab does not render them.
   const [transactions, accountBalances, recurringPayments] = await Promise.all([
     needsTransactions
-      ? listTransactions(user.id, transactionFilters)
+      ? listInitialTransactions(user.id, transactionFilters, {
+          timezone: settings.timezone,
+          transactionsPerDay: DEFAULT_VISIBLE_TRANSACTIONS_PER_DAY,
+          visibleDays: DEFAULT_VISIBLE_TRANSACTION_DAYS,
+        })
       : Promise.resolve([]),
-    needsBalances
-      ? getAccountBalances(user.id, accounts)
-      : Promise.resolve([]),
+    needsBalances ? getAccountBalances(user.id, accounts) : Promise.resolve([]),
     needsRecurring
       ? listRecurringPayments(user.id, { includeInactive: true })
       : Promise.resolve([]),

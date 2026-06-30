@@ -159,6 +159,44 @@ const recurringPayment = {
 } as RecurringPayment
 
 describe("FinancesPage", () => {
+  test("renders streaming overview shell with section skeletons while data is pending", async () => {
+    const { FinancesOverviewStreamingPage } =
+      await import("@/features/finances/components/finances-page")
+    const pendingAccounts = new Promise<FinancialAccount[]>(() => {})
+    const pendingBalances = new Promise<
+      Array<{ accountId: string; amount: string; currency: string }>
+    >(() => {})
+    const pendingCategories = new Promise<Category[]>(() => {})
+    const pendingTransactions = new Promise<Transaction[]>(() => {})
+
+    const html = renderToStaticMarkup(
+      <FinancesOverviewStreamingPage
+        accountBalancesPromise={pendingBalances}
+        accountsPromise={pendingAccounts}
+        categoriesPromise={pendingCategories}
+        chartPeriod="monthly"
+        financeSettings={{
+          baseCurrency: "USD",
+          monthStartDay: 1,
+          timezone: "UTC",
+          weekStartsOn: 1,
+        }}
+        transactionsPromise={pendingTransactions}
+      />
+    )
+
+    expect(html).toContain("Finances")
+    expect(html).toContain('href="/finances?tab=overview"')
+    expect(html).toContain("Net worth")
+    expect(html).toContain("This month / statement")
+    expect(html).toContain("Cashflow")
+    expect(html).toContain("Where it went")
+    expect(html).toContain("Accounts")
+    expect(html).toContain("Largest single expense")
+    expect(html).toContain("grid gap-3 md:grid-cols-3")
+    expect(html).not.toContain("Checking")
+  })
+
   test("renders the overview with balances cashflow and month insights", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")
