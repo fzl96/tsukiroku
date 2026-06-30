@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 
 import {
   archiveFinancialAccount,
@@ -15,7 +15,7 @@ import { requireUser } from "@/lib/auth"
 function revalidateAccountViews(userId: string) {
   revalidatePath("/dashboard")
   revalidatePath("/finances")
-  revalidateTag(`accounts:${userId}`, "max")
+  updateTag(`accounts:${userId}`)
 }
 
 export async function createFinancialAccountAction(input: unknown) {

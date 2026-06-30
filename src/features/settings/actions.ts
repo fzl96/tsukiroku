@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 
 import {
   createDefaultFinanceSettings,
@@ -17,7 +17,7 @@ export async function createDefaultFinanceSettingsAction(input?: {
     const settings = await createDefaultFinanceSettings(user.id, input)
     revalidatePath("/dashboard")
     revalidatePath("/finances")
-    revalidateTag(`settings:${user.id}`, "max")
+    updateTag(`settings:${user.id}`)
     return actionData(settings)
   } catch (error) {
     return actionError(error)
@@ -30,7 +30,7 @@ export async function updateUserFinanceSettingsAction(input: unknown) {
     const settings = await updateUserFinanceSettings(user.id, input)
     revalidatePath("/dashboard")
     revalidatePath("/finances")
-    revalidateTag(`settings:${user.id}`, "max")
+    updateTag(`settings:${user.id}`)
     return actionData(settings)
   } catch (error) {
     return actionError(error)

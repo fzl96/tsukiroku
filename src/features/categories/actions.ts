@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath, revalidateTag } from "next/cache"
+import { revalidatePath, updateTag } from "next/cache"
 
 import {
   archiveCategory,
@@ -14,7 +14,7 @@ import { requireUser } from "@/lib/auth"
 function revalidateCategoryViews(userId: string) {
   revalidatePath("/dashboard")
   revalidatePath("/finances")
-  revalidateTag(`categories:${userId}`, "max")
+  updateTag(`categories:${userId}`)
 }
 
 export async function createCategoryAction(input: unknown) {
