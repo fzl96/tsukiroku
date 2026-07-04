@@ -34,10 +34,13 @@ import { type TransactionGroup } from "@/features/finances/transaction-list"
 import {
   buildMonthlyCashflowBuckets,
   buildWeeklyCashflowBuckets,
+  getAccountComposition,
   getMonthExpenseBreakdown,
   getMonthOverviewStats,
   getMonthStatement,
   getNetWorthSummary,
+  type AccountComposition,
+  type AccountCompositionGroup,
   type ExpenseBreakdownItem,
 } from "@/features/finances/overview"
 import {
@@ -123,6 +126,15 @@ const statusLabels: Record<RecurringPayment["status"], string> = {
   PAUSED: "Paused",
   CANCELED: "Canceled",
   ENDED: "Ended",
+}
+
+const accountTypeLabels: Record<FinancialAccount["type"], string> = {
+  CASH: "Cash",
+  BANK: "Bank",
+  EWALLET: "E-wallet",
+  CREDIT_CARD: "Credit card",
+  INVESTMENT: "Investment",
+  OTHER: "Other",
 }
 
 const weekStartLabels = [
@@ -360,6 +372,102 @@ function AccountCards({
   )
 }
 
+function AccountScheduleGroup({
+  accountById,
+  baseCurrency,
+  group,
+}: {
+  accountById: Map<string, FinancialAccount>
+  baseCurrency: string
+  group: AccountCompositionGroup
+}) {
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-4 border-b border-foreground pb-2">
+        <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
+          {accountTypeLabels[group.type]} · {group.accountCount}
+        </p>
+        <p className="font-heading text-lg leading-none tracking-tight">
+          {formatCurrencyAmount(group.subtotal, baseCurrency)}
+        </p>
+      </div>
+      <div className="grid sm:grid-cols-2 sm:gap-x-10">
+        {group.items.map((item) => {
+          const account = accountById.get(item.accountId)
+
+          return (
+            <article
+              key={item.accountId}
+              className={cn(
+                "group relative flex items-baseline justify-between gap-4 border-b border-border py-2.5 transition-colors focus-within:bg-accent/50 hover:bg-accent/50",
+                item.isArchived && "opacity-60"
+              )}
+            >
+              {account ? <AccountCardMenu account={account} /> : null}
+              <span className="flex min-w-0 items-center gap-2">
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: item.color ?? "var(--chart-2)" }}
+                  aria-hidden="true"
+                />
+                <span className="truncate text-sm">{item.name}</span>
+                {item.isArchived ? (
+                  <span className="shrink-0 font-mono text-[10px] tracking-[0.14em] text-muted-foreground uppercase">
+                    Archived
+                  </span>
+                ) : null}
+              </span>
+              <span className="flex shrink-0 items-baseline gap-3">
+                <span className="font-mono text-[11px] text-muted-foreground tabular-nums">
+                  {item.share !== null ? formatShare(item.share) : "—"}
+                </span>
+                <span className="font-heading text-base leading-none tracking-tight tabular-nums">
+                  {formatCurrencyAmount(item.amount, item.currency)}
+                </span>
+              </span>
+            </article>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function AccountSchedule({
+  accounts,
+  baseCurrency,
+  composition,
+}: {
+  accounts: FinancialAccount[]
+  baseCurrency: string
+  composition: AccountComposition
+}) {
+  if (!composition.groups.length) {
+    return (
+      <div className="border border-dashed border-border p-4">
+        <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+          No accounts yet
+        </p>
+      </div>
+    )
+  }
+
+  const accountById = new Map(accounts.map((account) => [account.id, account]))
+
+  return (
+    <div className="space-y-7">
+      {composition.groups.map((group) => (
+        <AccountScheduleGroup
+          key={group.type}
+          accountById={accountById}
+          baseCurrency={baseCurrency}
+          group={group}
+        />
+      ))}
+    </div>
+  )
+}
+
 function FinanceTabs({ activeTab }: { activeTab: FinanceTab }) {
   return (
     <nav
@@ -542,29 +650,58 @@ function NetWorthMasthead({
   amount,
   baseAccountCount,
   baseCurrency,
+  composition,
   otherCurrencyCount,
 }: {
   amount: string
   baseAccountCount: number
   baseCurrency: string
+  composition: AccountComposition
   otherCurrencyCount: number
 }) {
+  const caption = [
+    composition.topSegment
+      ? `${formatShare(composition.topSegment.share ?? 0)} sits in ${
+          composition.topSegment.name
+        }`
+      : null,
+    `${baseAccountCount} account${baseAccountCount === 1 ? "" : "s"} in ${baseCurrency}`,
+    otherCurrencyCount
+      ? `${otherCurrencyCount} held in other currencies`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ")
+
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-border pb-7">
-      <div>
-        <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-          Net worth
-        </p>
-        <p className="mt-3 font-heading text-5xl leading-none tracking-tight sm:text-6xl">
-          {formatCurrencyAmount(amount, baseCurrency)}
-        </p>
-      </div>
-      <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
-        {baseAccountCount} account{baseAccountCount === 1 ? "" : "s"} in{" "}
-        {baseCurrency}
-        {otherCurrencyCount
-          ? ` · ${otherCurrencyCount} held in other currencies`
-          : ""}
+    <div className="border-b border-border pb-7">
+      <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+        Net worth
+      </p>
+      <p className="mt-3 font-heading text-5xl leading-none tracking-tight sm:text-6xl">
+        {formatCurrencyAmount(amount, baseCurrency)}
+      </p>
+      {composition.segments.length ? (
+        <div
+          className="mt-6 flex h-2.5 w-full overflow-hidden border border-border"
+          role="img"
+          aria-label={`Net worth by account: ${caption}`}
+        >
+          {composition.segments.map((segment) => (
+            <div
+              key={segment.accountId}
+              className="h-full border-r border-background last:border-r-0"
+              style={{
+                width: `${Math.max((segment.share ?? 0) * 100, 0.75)}%`,
+                backgroundColor: segment.color ?? "var(--chart-2)",
+              }}
+              title={`${segment.name} · ${formatShare(segment.share ?? 0)}`}
+            />
+          ))}
+        </div>
+      ) : null}
+      <p className="mt-3 font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+        {caption}
       </p>
     </div>
   )
@@ -814,16 +951,15 @@ function NotableSignals({
 
 function OverviewNetWorthSkeleton({ baseCurrency }: { baseCurrency: string }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-4 border-b border-border pb-7">
-      <div>
-        <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
-          Net worth
-        </p>
-        <Skeleton className="mt-3 h-14 w-64 max-w-full sm:h-16" />
-      </div>
-      <div className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+    <div className="border-b border-border pb-7">
+      <p className="font-mono text-[11px] tracking-[0.22em] text-muted-foreground uppercase">
+        Net worth
+      </p>
+      <Skeleton className="mt-3 h-14 w-64 max-w-full sm:h-16" />
+      <Skeleton className="mt-6 h-2.5 w-full" />
+      <div className="mt-3 font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
         <Skeleton
-          className="h-4 w-44"
+          className="h-4 w-64 max-w-full"
           aria-label={`Loading ${baseCurrency} accounts`}
         />
       </div>
@@ -935,7 +1071,7 @@ function OverviewExpenseBreakdownSkeleton() {
 
 function OverviewAccountsSkeleton() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
@@ -943,22 +1079,30 @@ function OverviewAccountsSkeleton() {
           </p>
           <h2 className="mt-2 text-2xl leading-8">Where it sits</h2>
         </div>
+        <Skeleton className="h-4 w-24" />
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <article
-            key={index}
-            className="relative border border-border p-4 pe-12"
-          >
-            <Skeleton className="h-3 w-24" />
-            <Skeleton className="mt-3 h-6 w-32" />
-            <Skeleton className="mt-5 h-8 w-36" />
-            <div className="mt-4 flex items-center justify-between gap-4">
-              <Skeleton className="h-3 w-10" />
-              <Skeleton className="h-3 w-14" />
+      <div>
+        <div className="flex items-baseline justify-between gap-4 border-b border-foreground pb-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-4 w-28" />
+        </div>
+        <div className="grid sm:grid-cols-2 sm:gap-x-10">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div
+              key={index}
+              className="flex items-baseline justify-between gap-4 border-b border-border py-2.5"
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <Skeleton className="size-2 shrink-0 rounded-full" />
+                <Skeleton className="h-4 w-36 max-w-full" />
+              </span>
+              <span className="flex shrink-0 items-baseline gap-3">
+                <Skeleton className="h-3 w-8" />
+                <Skeleton className="h-4 w-28" />
+              </span>
             </div>
-          </article>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -1013,13 +1157,23 @@ function OverviewTransactionCountSkeleton() {
 
 async function OverviewNetWorthSection({
   accountBalancesPromise,
+  accountsPromise,
   financeSettings,
 }: {
   accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
+  accountsPromise: Promise<FinancialAccount[]>
   financeSettings: FinancesPageProps["financeSettings"]
 }) {
-  const accountBalances = await accountBalancesPromise
+  const [accounts, accountBalances] = await Promise.all([
+    accountsPromise,
+    accountBalancesPromise,
+  ])
   const netWorth = getNetWorthSummary(
+    accountBalances,
+    financeSettings.baseCurrency
+  )
+  const composition = getAccountComposition(
+    accounts,
     accountBalances,
     financeSettings.baseCurrency
   )
@@ -1029,6 +1183,7 @@ async function OverviewNetWorthSection({
       amount={netWorth.amount}
       baseAccountCount={netWorth.baseAccountCount}
       baseCurrency={financeSettings.baseCurrency}
+      composition={composition}
       otherCurrencyCount={netWorth.otherCurrencyCount}
     />
   )
@@ -1155,17 +1310,24 @@ async function OverviewExpenseBreakdownSection({
 async function OverviewAccountsSection({
   accountBalancesPromise,
   accountsPromise,
+  financeSettings,
 }: {
   accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
   accountsPromise: Promise<FinancialAccount[]>
+  financeSettings: FinancesPageProps["financeSettings"]
 }) {
   const [accounts, accountBalances] = await Promise.all([
     accountsPromise,
     accountBalancesPromise,
   ])
+  const composition = getAccountComposition(
+    accounts,
+    accountBalances,
+    financeSettings.baseCurrency
+  )
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
@@ -1173,11 +1335,14 @@ async function OverviewAccountsSection({
           </p>
           <h2 className="mt-2 text-2xl leading-8">Where it sits</h2>
         </div>
+        <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+          {accounts.length} account{accounts.length === 1 ? "" : "s"}
+        </p>
       </div>
-      <AccountCards
+      <AccountSchedule
         accounts={accounts}
-        balances={accountBalances}
-        selectedAccountIds={[]}
+        baseCurrency={financeSettings.baseCurrency}
+        composition={composition}
       />
     </div>
   )
@@ -1270,6 +1435,11 @@ function OverviewTab({
       timezone: financeSettings.timezone,
     }
   )
+  const composition = getAccountComposition(
+    accounts,
+    accountBalances,
+    financeSettings.baseCurrency
+  )
 
   return (
     <section className="space-y-10 py-6">
@@ -1277,6 +1447,7 @@ function OverviewTab({
         amount={netWorth.amount}
         baseAccountCount={netWorth.baseAccountCount}
         baseCurrency={financeSettings.baseCurrency}
+        composition={composition}
         otherCurrencyCount={netWorth.otherCurrencyCount}
       />
 
@@ -1319,7 +1490,7 @@ function OverviewTab({
         />
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
@@ -1327,11 +1498,14 @@ function OverviewTab({
             </p>
             <h2 className="mt-2 text-2xl leading-8">Where it sits</h2>
           </div>
+          <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
+            {accounts.length} account{accounts.length === 1 ? "" : "s"}
+          </p>
         </div>
-        <AccountCards
+        <AccountSchedule
           accounts={accounts}
-          balances={accountBalances}
-          selectedAccountIds={[]}
+          baseCurrency={financeSettings.baseCurrency}
+          composition={composition}
         />
       </div>
 
@@ -1434,6 +1608,7 @@ export function FinancesOverviewStreamingBody({
       >
         <OverviewNetWorthSection
           accountBalancesPromise={accountBalancesPromise}
+          accountsPromise={accountsPromise}
           financeSettings={financeSettings}
         />
       </Suspense>
@@ -1469,6 +1644,7 @@ export function FinancesOverviewStreamingBody({
         <OverviewAccountsSection
           accountBalancesPromise={accountBalancesPromise}
           accountsPromise={accountsPromise}
+          financeSettings={financeSettings}
         />
       </Suspense>
 

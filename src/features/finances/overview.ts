@@ -2,7 +2,7 @@ import { addDays } from "date-fns"
 import { formatInTimeZone } from "date-fns-tz"
 import Decimal from "decimal.js"
 
-import type { Category, Transaction } from "@/db/schema"
+import type { Category, FinancialAccount, Transaction } from "@/db/schema"
 import { formatMoney } from "@/lib/money"
 import {
   getDateInputValueInTimeZone,
@@ -67,6 +67,29 @@ export type MonthOverviewStats = {
     currency: string
     transactionCount: number
   } | null
+}
+
+export type AccountCompositionItem = {
+  accountId: string
+  name: string
+  color: string | null
+  currency: string
+  isArchived: boolean
+  amount: string
+  share: number | null
+}
+
+export type AccountCompositionGroup = {
+  type: FinancialAccount["type"]
+  accountCount: number
+  subtotal: string
+  items: AccountCompositionItem[]
+}
+
+export type AccountComposition = {
+  groups: AccountCompositionGroup[]
+  segments: AccountCompositionItem[]
+  topSegment: AccountCompositionItem | null
 }
 
 type CashflowAccumulator = {
@@ -325,6 +348,98 @@ export function getNetWorthSummary(
     amount: formatMoney(total),
     baseAccountCount,
     otherCurrencyCount,
+  }
+}
+
+export function getAccountComposition(
+  accounts: readonly Pick<
+    FinancialAccount,
+    "id" | "name" | "type" | "currency" | "color" | "initialBalance" | "isArchived"
+  >[],
+  balances: readonly { accountId: string; amount: string; currency: string }[],
+  baseCurrency: string
+): AccountComposition {
+  const balanceByAccountId = new Map(
+    balances.map((balance) => [balance.accountId, balance])
+  )
+  const resolved = accounts.map((account) => {
+    const balance = balanceByAccountId.get(account.id)
+
+    return {
+      account,
+      amount: new Decimal(balance?.amount ?? account.initialBalance),
+      currency: balance?.currency ?? account.currency,
+    }
+  })
+
+  // Shares are fractions of the positive base-currency holdings, so strip
+  // segment widths always sum to 100% even when some balances are negative.
+  const positiveTotal = resolved.reduce(
+    (total, entry) =>
+      entry.currency === baseCurrency && entry.amount.gt(0)
+        ? total.plus(entry.amount)
+        : total,
+    new Decimal(0)
+  )
+
+  const groupsByType = new Map<
+    FinancialAccount["type"],
+    { subtotal: Decimal; items: AccountCompositionItem[] }
+  >()
+
+  for (const entry of resolved) {
+    const isBase = entry.currency === baseCurrency
+    const item: AccountCompositionItem = {
+      accountId: entry.account.id,
+      name: entry.account.name,
+      color: entry.account.color,
+      currency: entry.currency,
+      isArchived: entry.account.isArchived,
+      amount: formatMoney(entry.amount),
+      share:
+        isBase && entry.amount.gt(0) && positiveTotal.gt(0)
+          ? entry.amount.dividedBy(positiveTotal).toNumber()
+          : null,
+    }
+    const group = groupsByType.get(entry.account.type) ?? {
+      subtotal: new Decimal(0),
+      items: [],
+    }
+
+    if (isBase) {
+      group.subtotal = group.subtotal.plus(entry.amount)
+    }
+
+    group.items.push(item)
+    groupsByType.set(entry.account.type, group)
+  }
+
+  const groups = [...groupsByType.entries()]
+    .map(([type, group]) => ({
+      type,
+      accountCount: group.items.length,
+      subtotal: formatMoney(group.subtotal),
+      items: group.items.sort((left, right) => {
+        if (left.isArchived !== right.isArchived) {
+          return left.isArchived ? 1 : -1
+        }
+
+        return (right.share ?? -1) - (left.share ?? -1)
+      }),
+    }))
+    .sort((left, right) => new Decimal(right.subtotal).comparedTo(left.subtotal))
+
+  const segments = groups
+    .flatMap((group) => group.items)
+    .filter((item): item is AccountCompositionItem & { share: number } =>
+      item.share !== null && item.share > 0
+    )
+    .sort((left, right) => right.share - left.share)
+
+  return {
+    groups,
+    segments,
+    topSegment: segments[0] ?? null,
   }
 }
 

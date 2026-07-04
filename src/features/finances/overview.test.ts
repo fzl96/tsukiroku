@@ -5,6 +5,7 @@ import type { Category, Transaction } from "@/db/schema"
 import {
   buildMonthlyCashflowBuckets,
   buildWeeklyCashflowBuckets,
+  getAccountComposition,
   getMonthExpenseBreakdown,
   getMonthOverviewStats,
   getMonthStatement,
@@ -359,5 +360,72 @@ describe("finance overview helpers", () => {
       color: null,
       amount: "25.00",
     })
+  })
+
+  test("groups account composition by type ranked by base-currency share", () => {
+    const accountFixture = (
+      overrides: Partial<Parameters<typeof getAccountComposition>[0][number]> &
+        Pick<Parameters<typeof getAccountComposition>[0][number], "id" | "name">
+    ) => ({
+      type: "BANK" as const,
+      currency: "USD",
+      color: null,
+      initialBalance: "0.00",
+      isArchived: false,
+      ...overrides,
+    })
+
+    const composition = getAccountComposition(
+      [
+        accountFixture({ id: "salary", name: "Salary", color: "#16a34a" }),
+        accountFixture({ id: "freelance", name: "Freelance" }),
+        accountFixture({ id: "pocket", name: "Pocket", type: "EWALLET" }),
+        accountFixture({ id: "travel", name: "Travel", currency: "EUR" }),
+        accountFixture({ id: "old", name: "Old", isArchived: true }),
+      ],
+      [
+        { accountId: "salary", amount: "600.00", currency: "USD" },
+        { accountId: "freelance", amount: "300.00", currency: "USD" },
+        { accountId: "pocket", amount: "100.00", currency: "USD" },
+        { accountId: "travel", amount: "50.00", currency: "EUR" },
+        { accountId: "old", amount: "-25.00", currency: "USD" },
+      ],
+      "USD"
+    )
+
+    expect(composition.groups).toHaveLength(2)
+    expect(composition.groups[0]).toMatchObject({
+      type: "BANK",
+      accountCount: 4,
+      subtotal: "875.00",
+    })
+    expect(composition.groups[0].items.map((item) => item.accountId)).toEqual([
+      "salary",
+      "freelance",
+      "travel",
+      "old",
+    ])
+    expect(composition.groups[0].items[0].share).toBe(0.6)
+    expect(composition.groups[0].items[2].share).toBeNull()
+    expect(composition.groups[0].items[3].share).toBeNull()
+    expect(composition.groups[1]).toMatchObject({
+      type: "EWALLET",
+      subtotal: "100.00",
+    })
+
+    expect(composition.segments.map((segment) => segment.accountId)).toEqual([
+      "salary",
+      "freelance",
+      "pocket",
+    ])
+    expect(composition.topSegment?.accountId).toBe("salary")
+  })
+
+  test("returns empty composition when there are no accounts", () => {
+    const composition = getAccountComposition([], [], "USD")
+
+    expect(composition.groups).toEqual([])
+    expect(composition.segments).toEqual([])
+    expect(composition.topSegment).toBeNull()
   })
 })

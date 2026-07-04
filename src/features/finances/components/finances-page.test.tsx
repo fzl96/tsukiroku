@@ -239,7 +239,7 @@ describe("FinancesPage", () => {
     expect(html).toContain("Where it went")
     expect(html).toContain("Accounts")
     expect(html).toContain("Largest single expense")
-    expect(html).toContain("grid gap-3 md:grid-cols-3")
+    expect(html).toContain("grid sm:grid-cols-2 sm:gap-x-10")
     expect(html).not.toContain("Checking")
   })
 
