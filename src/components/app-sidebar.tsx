@@ -18,7 +18,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       {...props}
     >
       <SidebarHeader className="border-b border-sidebar-border px-5 py-8">
-        <Link href="/finances" className="block">
+        <Link href="/finance" className="block">
           <span className="block font-heading text-2xl leading-none">
             Tsukiroku
           </span>
@@ -37,7 +37,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                   isActive
                   className="h-11 rounded-none px-4 text-base font-medium data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground"
                 >
-                  <Link href="/finances">Finances</Link>
+                  <Link href="/finance">Finances</Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
             </SidebarMenu>

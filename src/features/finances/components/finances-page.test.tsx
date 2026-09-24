@@ -9,22 +9,8 @@ import type {
   Transaction,
 } from "@/db/schema"
 
-mock.module("next/link", () => ({
-  default: ({
-    children,
-    href,
-    ...props
-  }: React.ComponentProps<"a"> & { href: string }) => (
-    <a href={href} {...props}>
-      {children}
-    </a>
-  ),
-}))
-
-mock.module("next/navigation", () => ({
-  useRouter: () => ({
-    refresh: () => {},
-  }),
+mock.module("@/features/finances/components/finance-data-provider", () => ({
+  useFinanceActions: () => ({}),
 }))
 
 mock.module("@/components/ui/sheet", () => ({
@@ -205,42 +191,18 @@ describe("FinancesPage", () => {
     expect(html).not.toMatch(/<p[^>]*>\s*<div[^>]*data-slot="skeleton"/)
   })
 
-  test("renders streaming overview shell with section skeletons while data is pending", async () => {
-    const { FinancesOverviewStreamingPage } =
+  test("renders the initial finance shell while the server prefetch is pending", async () => {
+    const { FinancesShell, FinancesTabSkeleton } =
       await import("@/features/finances/components/finances-page")
-    const pendingAccounts = new Promise<FinancialAccount[]>(() => {})
-    const pendingBalances = new Promise<
-      Array<{ accountId: string; amount: string; currency: string }>
-    >(() => {})
-    const pendingCategories = new Promise<Category[]>(() => {})
-    const pendingTransactions = new Promise<Transaction[]>(() => {})
-
     const html = renderToStaticMarkup(
-      <FinancesOverviewStreamingPage
-        accountBalancesPromise={pendingBalances}
-        accountsPromise={pendingAccounts}
-        categoriesPromise={pendingCategories}
-        chartPeriod="monthly"
-        financeSettings={{
-          baseCurrency: "USD",
-          monthStartDay: 1,
-          timezone: "UTC",
-          weekStartsOn: 1,
-        }}
-        transactionsPromise={pendingTransactions}
-      />
+      <FinancesShell tab="transactions">
+        <FinancesTabSkeleton tab="transactions" />
+      </FinancesShell>
     )
-
     expect(html).toContain("Finances")
-    expect(html).toContain('href="/finances?tab=overview"')
-    expect(html).toContain("Net worth")
-    expect(html).toContain("This month / statement")
-    expect(html).toContain("Cashflow")
-    expect(html).toContain("Where it went")
-    expect(html).toContain("Accounts")
-    expect(html).toContain("Largest single expense")
-    expect(html).toContain("grid sm:grid-cols-2 sm:gap-x-10")
-    expect(html).not.toContain("Checking")
+    expect(html).toContain("Finance sections")
+    expect(html).not.toContain("?tab=")
+    expect(html).toContain('aria-pressed="true"')
   })
 
   test("renders the overview with balances cashflow and month insights", async () => {
@@ -268,7 +230,10 @@ describe("FinancesPage", () => {
         }}
         tab="overview"
         timezone="UTC"
-        transactions={[transaction, expenseTransaction]}
+        transactions={[
+          { ...transaction, occurredAt: new Date() },
+          { ...expenseTransaction, occurredAt: new Date() },
+        ]}
       />
     )
 
@@ -276,12 +241,8 @@ describe("FinancesPage", () => {
     expect(html).toContain("Checking")
     expect(html).toContain("USD 1,027.50")
     expect(html).toContain("Cashflow")
-    expect(html).toContain(
-      'href="/finances?tab=overview&amp;chartPeriod=monthly"'
-    )
-    expect(html).toContain(
-      'href="/finances?tab=overview&amp;chartPeriod=daily"'
-    )
+    expect(html).not.toContain("chartPeriod=")
+    expect(html).not.toContain("chartPeriod=")
     expect(html).toContain("This month / statement")
     expect(html).toContain("Money in")
     expect(html).toContain("Money out")
@@ -293,7 +254,7 @@ describe("FinancesPage", () => {
     expect(html).not.toContain("Overview is coming next.")
   })
 
-  test("renders four query-param tabs and defaults to transactions", async () => {
+  test("renders four client-side tab buttons and defaults to transactions", async () => {
     const { FinancesPage } =
       await import("@/features/finances/components/finances-page")
 
@@ -322,11 +283,9 @@ describe("FinancesPage", () => {
       />
     )
 
-    expect(html).toContain('href="/finances?tab=overview"')
-    expect(html).toContain('href="/finances?tab=transactions"')
-    expect(html).toContain('href="/finances?tab=recurring"')
-    expect(html).toContain('href="/finances?tab=manage"')
     expect(html).toContain("sticky top-0 z-20 bg-background")
+    expect(html).not.toContain("?tab=")
+    expect(html).toContain('aria-pressed="true"')
     expect(html).not.toContain("Recent transactions")
   })
 

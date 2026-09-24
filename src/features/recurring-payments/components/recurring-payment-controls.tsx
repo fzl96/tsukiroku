@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
 
 import type { Category, FinancialAccount, RecurringPayment } from "@/db/schema"
@@ -26,13 +25,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  cancelRecurringPaymentAction,
-  createRecurringPaymentAction,
-  pauseRecurringPaymentAction,
-  recordRecurringPaymentAction,
-  updateRecurringPaymentAction,
-} from "@/features/recurring-payments/actions"
+import { useFinanceActions } from "@/features/finances/components/finance-data-provider"
 import { getDateInputValueInTimeZone, parseUserDateAsUtc } from "@/lib/timezone"
 
 type NewRecurringPaymentButtonProps = {
@@ -97,10 +90,10 @@ function NewRecurringPaymentForm({
   onCancel: () => void
   onCreated: () => void
 }) {
+  const { createRecurringPaymentAction } = useFinanceActions()
   const form = useForm<NewRecurringPaymentFormValues>({
     defaultValues: buildDefaultValues(accounts, timezone),
   })
-  const router = useRouter()
   const selectedAccountId = useWatch({
     control: form.control,
     name: "accountId",
@@ -153,7 +146,6 @@ function NewRecurringPaymentForm({
 
       setError(null)
       form.reset(buildDefaultValues(accounts, timezone))
-      router.refresh()
       onCreated()
     })
   }
@@ -508,7 +500,12 @@ export function RecurringPaymentActionButtons({
 }: {
   recurringPayment: RecurringPayment
 }) {
-  const router = useRouter()
+  const {
+    cancelRecurringPaymentAction,
+    pauseRecurringPaymentAction,
+    recordRecurringPaymentAction,
+    updateRecurringPaymentAction,
+  } = useFinanceActions()
   const [error, setError] = React.useState<string | null>(null)
   const [isPending, startTransition] = React.useTransition()
 
@@ -522,7 +519,6 @@ export function RecurringPaymentActionButtons({
       }
 
       setError(null)
-      router.refresh()
     })
   }
 

@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
 
 import type { Category, FinancialAccount, Transaction } from "@/db/schema"
@@ -30,10 +29,7 @@ import {
   NativeSelectOption,
 } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  deleteTransactionAction,
-  updateTransactionAction,
-} from "@/features/transactions/actions"
+import { useFinanceActions } from "@/features/finances/components/finance-data-provider"
 import {
   formatDateForUser,
   formatDateTimeForUser,
@@ -139,6 +135,7 @@ function TransactionEditForm({
   onCancel: () => void
   onSaved: () => void
 }) {
+  const { updateTransactionAction } = useFinanceActions()
   const form = useForm<TransactionFormValues>({
     defaultValues: {
       type: transaction.type,
@@ -537,7 +534,7 @@ export function TransactionRow({
   timezone,
   transaction,
 }: TransactionRowProps) {
-  const router = useRouter()
+  const { deleteTransactionAction } = useFinanceActions()
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [isDeleting, startDeleteTransition] = React.useTransition()
@@ -565,7 +562,6 @@ export function TransactionRow({
       }
 
       setDeleteOpen(false)
-      router.refresh()
     })
   }
 
@@ -625,7 +621,6 @@ export function TransactionRow({
               onCancel={() => setIsEditing(false)}
               onSaved={() => {
                 setIsEditing(false)
-                router.refresh()
               }}
             />
           ) : (

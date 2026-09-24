@@ -37,12 +37,12 @@ export function groupTransactions(
   transactions: TransactionListRow[],
   timezone: string
 ) {
+  const byDay = new Map<string, TransactionGroup>()
   return transactions.reduce<TransactionGroup[]>((groups, transaction) => {
     const dayKey =
       transaction.dayKey ??
       getDateInputValueInTimeZone(transaction.occurredAt, timezone)
-    const label = getGroupLabel(transaction.occurredAt, timezone)
-    const group = groups.find((item) => item.dayKey === dayKey)
+    const group = byDay.get(dayKey)
 
     if (group) {
       group.transactions.push(transaction)
@@ -51,12 +51,14 @@ export function groupTransactions(
       return groups
     }
 
-    groups.push({
+    const nextGroup = {
       dayKey,
-      label,
+      label: getGroupLabel(transaction.occurredAt, timezone),
       totalTransactions: transaction.totalTransactions ?? undefined,
       transactions: [transaction],
-    })
+    }
+    byDay.set(dayKey, nextGroup)
+    groups.push(nextGroup)
     return groups
   }, [])
 }

@@ -46,9 +46,17 @@ export const createRecurringPaymentSchema = z
       .regex(/^[A-Z]{3}$/, "Currency must be a three-letter ISO code"),
     frequency: recurringFrequencySchema,
     intervalCount: z.number().int().min(1).default(1),
-    startDate: z.date().nullable().optional().transform((value) => value ?? null),
+    startDate: z
+      .date()
+      .nullable()
+      .optional()
+      .transform((value) => value ?? null),
     nextDueDate: z.date(),
-    endDate: z.date().nullable().optional().transform((value) => value ?? null),
+    endDate: z
+      .date()
+      .nullable()
+      .optional()
+      .transform((value) => value ?? null),
     note: nullableTextSchema,
   })
   .superRefine((data, ctx) => {
@@ -65,11 +73,14 @@ export const createRecurringPaymentSchema = z
 
 const recurringPaymentBaseUpdateSchema = z.object({
   accountId: z.string().trim().min(1).optional(),
-  categoryId: nullableIdSchema,
-  merchant: nullableTextSchema,
+  categoryId: nullableIdSchema.optional(),
+  merchant: nullableTextSchema.optional(),
   name: z.string().trim().min(1).max(160).optional(),
   type: recurringPaymentTypeSchema.optional(),
-  amount: z.string().transform((value) => assertPositiveMoney(value)).optional(),
+  amount: z
+    .string()
+    .transform((value) => assertPositiveMoney(value))
+    .optional(),
   currency: z
     .string()
     .trim()
@@ -80,16 +91,17 @@ const recurringPaymentBaseUpdateSchema = z.object({
   startDate: z.date().nullable().optional(),
   nextDueDate: z.date().optional(),
   endDate: z.date().nullable().optional(),
-  note: nullableTextSchema,
+  note: nullableTextSchema.optional(),
   status: recurringPaymentStatusSchema.optional(),
 })
 
-export const updateRecurringPaymentSchema = recurringPaymentBaseUpdateSchema.refine(
-  (data) => Object.keys(data).length > 0,
-  {
-    message: "Provide at least one field to update",
-  },
-)
+export const updateRecurringPaymentSchema =
+  recurringPaymentBaseUpdateSchema.refine(
+    (data) => Object.keys(data).length > 0,
+    {
+      message: "Provide at least one field to update",
+    }
+  )
 
 export const listRecurringPaymentsFiltersSchema = z
   .object({

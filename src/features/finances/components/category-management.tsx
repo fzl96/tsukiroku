@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 
 import type { Category } from "@/db/schema"
@@ -32,12 +31,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
-import {
-  archiveCategoryAction,
-  createCategoryAction,
-  deleteCategoryAction,
-  updateCategoryAction,
-} from "@/features/categories/actions"
+import { useFinanceActions } from "@/features/finances/components/finance-data-provider"
 import {
   Sheet,
   SheetContent,
@@ -196,7 +190,7 @@ function CategoryForm({
 }
 
 export function NewCategoryButton() {
-  const router = useRouter()
+  const { createCategoryAction } = useFinanceActions()
   const [open, setOpen] = React.useState(false)
 
   async function handleSubmit(input: CategoryInput) {
@@ -207,7 +201,6 @@ export function NewCategoryButton() {
     }
 
     setOpen(false)
-    router.refresh()
     return null
   }
 
@@ -258,7 +251,6 @@ function CategoryConfirmSheet({
   title: string
   variant?: "default" | "destructive"
 }) {
-  const router = useRouter()
   const [error, setError] = React.useState<string | null>(null)
   const [isPending, startTransition] = React.useTransition()
 
@@ -272,7 +264,6 @@ function CategoryConfirmSheet({
       }
 
       onOpenChange(false)
-      router.refresh()
     })
   }
 
@@ -321,7 +312,8 @@ function CategoryConfirmSheet({
 }
 
 export function CategoryActionMenu({ category }: { category: Category }) {
-  const router = useRouter()
+  const { archiveCategoryAction, deleteCategoryAction, updateCategoryAction } =
+    useFinanceActions()
   const [archiveOpen, setArchiveOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [editOpen, setEditOpen] = React.useState(false)
@@ -338,7 +330,6 @@ export function CategoryActionMenu({ category }: { category: Category }) {
     }
 
     setEditOpen(false)
-    router.refresh()
     return null
   }
 

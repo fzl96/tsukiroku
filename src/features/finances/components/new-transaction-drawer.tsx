@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import { useForm, useWatch } from "react-hook-form"
 
 import type { Category, FinancialAccount } from "@/db/schema"
@@ -30,7 +29,7 @@ import {
 } from "@/components/ui/sheet"
 import { Textarea } from "@/components/ui/textarea"
 import { AccountSelectWithBalance } from "@/features/finances/components/account-select-with-balance"
-import { createTransactionAction } from "@/features/transactions/actions"
+import { useFinanceActions } from "@/features/finances/components/finance-data-provider"
 import {
   getDateInputValueInTimeZone,
   getTimeInputValueInTimeZone,
@@ -82,6 +81,7 @@ function NewTransactionForm({
   onCancel: () => void
   onCreated: () => void
 }) {
+  const { createTransactionAction } = useFinanceActions()
   const now = new Date()
   const incomeCategories = categories.filter(
     (category) => category.kind === "INCOME"
@@ -490,12 +490,10 @@ export function NewTransactionDrawerButton({
   categories,
   timezone,
 }: NewTransactionDrawerButtonProps) {
-  const router = useRouter()
   const [open, setOpen] = React.useState(false)
 
   function handleCreated() {
     setOpen(false)
-    router.refresh()
   }
 
   return (

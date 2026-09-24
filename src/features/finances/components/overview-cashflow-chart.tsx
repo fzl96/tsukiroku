@@ -96,8 +96,18 @@ export function OverviewCashflowChart({
             />
           }
         />
-        <Bar dataKey="income" fill="var(--color-income)" radius={0} />
-        <Bar dataKey="expense" fill="var(--color-expense)" radius={0} />
+        <Bar
+          dataKey="income"
+          fill="var(--color-income)"
+          radius={0}
+          isAnimationActive={false}
+        />
+        <Bar
+          dataKey="expense"
+          fill="var(--color-expense)"
+          radius={0}
+          isAnimationActive={false}
+        />
       </BarChart>
     </ChartContainer>
   )

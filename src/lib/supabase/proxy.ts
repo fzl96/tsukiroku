@@ -31,14 +31,18 @@ export async function updateSession(request: NextRequest) {
           })
         },
       },
-    },
+    }
   )
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user && !isPublicAuthPath(request.nextUrl.pathname)) {
+  if (
+    !user &&
+    !isPublicAuthPath(request.nextUrl.pathname) &&
+    !request.nextUrl.pathname.startsWith("/api/trpc/")
+  ) {
     return NextResponse.redirect(getLoginRedirectUrl(request.nextUrl))
   }
 

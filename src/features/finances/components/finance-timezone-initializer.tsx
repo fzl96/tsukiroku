@@ -1,43 +1,22 @@
 "use client"
 
-import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useRef } from "react"
+import { useFinanceActions } from "@/features/finances/components/finance-data-provider"
 
-import { updateUserFinanceSettingsAction } from "@/features/settings/actions"
-
-type FinanceTimezoneInitializerProps = {
+export function FinanceTimezoneInitializer(settings: {
   baseCurrency: string
   monthStartDay: number
   timezone: string
   weekStartsOn: number
-}
-
-export function FinanceTimezoneInitializer({
-  baseCurrency,
-  monthStartDay,
-  timezone,
-  weekStartsOn,
-}: FinanceTimezoneInitializerProps) {
-  const router = useRouter()
-
-  React.useEffect(() => {
-    const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone
-
-    if (!detectedTimezone || detectedTimezone === timezone) {
-      return
-    }
-
-    void updateUserFinanceSettingsAction({
-      baseCurrency,
-      monthStartDay,
-      timezone: detectedTimezone,
-      weekStartsOn,
-    }).then((result) => {
-      if (!result.error) {
-        router.refresh()
-      }
-    })
-  }, [baseCurrency, monthStartDay, router, timezone, weekStartsOn])
-
+}) {
+  const started = useRef(false)
+  const { updateUserFinanceSettingsAction } = useFinanceActions()
+  useEffect(() => {
+    if (started.current) return
+    started.current = true
+    const timezone =
+      Intl.DateTimeFormat().resolvedOptions().timeZone || settings.timezone
+    void updateUserFinanceSettingsAction({ ...settings, timezone })
+  }, [settings, updateUserFinanceSettingsAction])
   return null
 }

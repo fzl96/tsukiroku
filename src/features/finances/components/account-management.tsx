@@ -1,16 +1,10 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 
 import type { FinancialAccount } from "@/db/schema"
-import {
-  archiveFinancialAccountAction,
-  createFinancialAccountAction,
-  deleteFinancialAccountAction,
-  updateFinancialAccountAction,
-} from "@/features/accounts/actions"
+import { useFinanceActions } from "@/features/finances/components/finance-data-provider"
 import { Button } from "@/components/ui/button"
 import {
   Form,
@@ -235,7 +229,7 @@ function AccountForm({
 }
 
 export function NewAccountButton() {
-  const router = useRouter()
+  const { createFinancialAccountAction } = useFinanceActions()
   const [open, setOpen] = React.useState(false)
 
   async function handleSubmit(input: AccountInput) {
@@ -246,7 +240,6 @@ export function NewAccountButton() {
     }
 
     setOpen(false)
-    router.refresh()
     return null
   }
 
@@ -296,7 +289,6 @@ function AccountConfirmSheet({
   title: string
   variant?: "default" | "destructive"
 }) {
-  const router = useRouter()
   const [error, setError] = React.useState<string | null>(null)
   const [isPending, startTransition] = React.useTransition()
 
@@ -310,7 +302,6 @@ function AccountConfirmSheet({
       }
 
       onOpenChange(false)
-      router.refresh()
     })
   }
 
@@ -359,7 +350,11 @@ function AccountConfirmSheet({
 }
 
 export function AccountCardMenu({ account }: { account: FinancialAccount }) {
-  const router = useRouter()
+  const {
+    archiveFinancialAccountAction,
+    deleteFinancialAccountAction,
+    updateFinancialAccountAction,
+  } = useFinanceActions()
   const [archiveOpen, setArchiveOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [editOpen, setEditOpen] = React.useState(false)
@@ -375,7 +370,6 @@ export function AccountCardMenu({ account }: { account: FinancialAccount }) {
     }
 
     setEditOpen(false)
-    router.refresh()
     return null
   }
 

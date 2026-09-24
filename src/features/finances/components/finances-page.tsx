@@ -1,5 +1,7 @@
-import Link from "next/link"
-import { Suspense } from "react"
+"use client"
+
+import { memo } from "react"
+import { useFinanceNavigation } from "@/features/finances/components/finance-navigation"
 
 import type {
   Category,
@@ -73,12 +75,9 @@ type FinancesPageProps = {
     "baseCurrency" | "monthStartDay" | "timezone" | "weekStartsOn"
   >
   recurringPayments?: RecurringPayment[]
-  hasMoreTransactionDays?: boolean
-  nextTransactionDayOffset?: number | null
   tab: FinanceTab
   chartPeriod?: OverviewChartPeriod
   timezone: string
-  transactionFilters?: unknown
   transactions: Transaction[]
   filters: {
     accountIds: string[]
@@ -172,71 +171,32 @@ function getBaseCurrencyTransactions(
   )
 }
 
-function buildHref(
+function buildFilterUpdate(
   filters: FinancesPageProps["filters"],
-  updates: {
-    accountIds?: string[] | null
-    categoryIds?: string[] | null
-    period?: FinancePeriod | null
-    tab?: FinanceTab | null
-    type?: FinanceTransactionTypeFilter | null
-  }
+  updates: Partial<FinancesPageProps["filters"]>
 ) {
-  const params = new URLSearchParams()
-
-  const accountIds = updates.accountIds ?? filters.accountIds
-  const categoryIds = updates.categoryIds ?? filters.categoryIds
-  const period = updates.period ?? filters.period
-  const tab = updates.tab ?? "transactions"
-  const type = updates.type ?? filters.type
-
-  params.set("tab", tab)
-
-  accountIds?.forEach((accountId) => {
-    params.append("accountId", accountId)
-  })
-
-  categoryIds?.forEach((categoryId) => {
-    params.append("categoryId", categoryId)
-  })
-
-  if (period !== "all") {
-    params.set("period", period)
-  }
-
-  if (type !== "all") {
-    params.set("type", type)
-  }
-
-  const query = params.toString()
-
-  return query ? `/finances?${query}` : "/finances"
-}
-
-function buildTabHref(tab: FinanceTab) {
-  return `/finances?tab=${tab}`
-}
-
-function buildOverviewChartHref(period: OverviewChartPeriod) {
-  return `/finances?tab=overview&chartPeriod=${period}`
+  return { filters: { ...filters, ...updates } }
 }
 
 function FilterLink({
   active,
   children,
   fallbackToneClassName = "bg-chart-2",
-  href,
+  update,
   tone,
 }: {
   active: boolean
   children: React.ReactNode
   fallbackToneClassName?: string
-  href: string
+  update: Parameters<ReturnType<typeof useFinanceNavigation>["navigate"]>[0]
   tone?: string | null
 }) {
+  const { navigate } = useFinanceNavigation()
   return (
-    <Link
-      href={href}
+    <button
+      type="button"
+      onClick={() => navigate(update)}
+      aria-pressed={active}
       className={cn(
         "inline-flex h-8 items-center gap-2 border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase transition-colors hover:bg-accent hover:text-accent-foreground",
         active &&
@@ -256,7 +216,7 @@ function FilterLink({
         />
       ) : null}
       {children}
-    </Link>
+    </button>
   )
 }
 
@@ -281,7 +241,7 @@ function CategoryFilterRow({
       {categories.map((category) => (
         <FilterLink
           key={category.id}
-          href={buildHref(filters, {
+          update={buildFilterUpdate(filters, {
             categoryIds: toggleFilterId(filters.categoryIds, category.id),
           })}
           active={filters.categoryIds.includes(category.id)}
@@ -469,15 +429,18 @@ function AccountSchedule({
 }
 
 function FinanceTabs({ activeTab }: { activeTab: FinanceTab }) {
+  const { navigate } = useFinanceNavigation()
   return (
     <nav
       className="flex flex-wrap gap-2 border-b border-border py-5"
       aria-label="Finance sections"
     >
       {Object.entries(tabLabels).map(([tab, label]) => (
-        <Link
+        <button
+          type="button"
           key={tab}
-          href={buildTabHref(tab as FinanceTab)}
+          onClick={() => navigate({ tab: tab as FinanceTab })}
+          aria-pressed={activeTab === tab}
           className={cn(
             "inline-flex h-8 items-center border border-border px-3 font-mono text-[11px] tracking-[0.14em] text-foreground uppercase transition-colors hover:bg-accent hover:text-accent-foreground",
             activeTab === tab &&
@@ -485,7 +448,7 @@ function FinanceTabs({ activeTab }: { activeTab: FinanceTab }) {
           )}
         >
           {label}
-        </Link>
+        </button>
       ))}
     </nav>
   )
@@ -511,7 +474,7 @@ function FilterPanel({
         {periodOptions.map((period) => (
           <FilterLink
             key={period}
-            href={buildHref(filters, { period })}
+            update={buildFilterUpdate(filters, { period })}
             active={filters.period === period}
             fallbackToneClassName=""
           >
@@ -525,7 +488,7 @@ function FilterPanel({
           Account
         </p>
         <FilterLink
-          href={buildHref(filters, { accountIds: [] })}
+          update={buildFilterUpdate(filters, { accountIds: [] })}
           active={!filters.accountIds.length}
           fallbackToneClassName=""
         >
@@ -534,7 +497,7 @@ function FilterPanel({
         {accounts.map((account) => (
           <FilterLink
             key={account.id}
-            href={buildHref(filters, {
+            update={buildFilterUpdate(filters, {
               accountIds: toggleFilterId(filters.accountIds, account.id),
             })}
             active={filters.accountIds.includes(account.id)}
@@ -552,7 +515,7 @@ function FilterPanel({
         {transactionTypeFilterOptions.map((type) => (
           <FilterLink
             key={type}
-            href={buildHref(filters, { type })}
+            update={buildFilterUpdate(filters, { type })}
             active={filters.type === type}
             fallbackToneClassName=""
           >
@@ -566,7 +529,7 @@ function FilterPanel({
           Category
         </p>
         <FilterLink
-          href={buildHref(filters, { categoryIds: [] })}
+          update={buildFilterUpdate(filters, { categoryIds: [] })}
           active={!filters.categoryIds.length}
           fallbackToneClassName=""
         >
@@ -1024,7 +987,7 @@ function OverviewCashflowChartSkeleton({
               key={period}
               active={chartPeriod === period}
               fallbackToneClassName=""
-              href={buildOverviewChartHref(period)}
+              update={{ chartPeriod: period }}
             >
               {chartPeriodLabels[period]}
             </FilterLink>
@@ -1133,252 +1096,6 @@ function OverviewNotableSignalsSkeleton() {
   )
 }
 
-async function OverviewTransactionCount({
-  transactionsPromise,
-}: {
-  transactionsPromise: Promise<Transaction[]>
-}) {
-  const transactions = await transactionsPromise
-
-  return (
-    <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
-      {transactions.length} transactions
-    </p>
-  )
-}
-
-function OverviewTransactionCountSkeleton() {
-  return (
-    <p className="pt-10 font-mono text-[12px] tracking-[0.16em] text-muted-foreground uppercase">
-      Loading transactions
-    </p>
-  )
-}
-
-async function OverviewNetWorthSection({
-  accountBalancesPromise,
-  accountsPromise,
-  financeSettings,
-}: {
-  accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
-  accountsPromise: Promise<FinancialAccount[]>
-  financeSettings: FinancesPageProps["financeSettings"]
-}) {
-  const [accounts, accountBalances] = await Promise.all([
-    accountsPromise,
-    accountBalancesPromise,
-  ])
-  const netWorth = getNetWorthSummary(
-    accountBalances,
-    financeSettings.baseCurrency
-  )
-  const composition = getAccountComposition(
-    accounts,
-    accountBalances,
-    financeSettings.baseCurrency
-  )
-
-  return (
-    <NetWorthMasthead
-      amount={netWorth.amount}
-      baseAccountCount={netWorth.baseAccountCount}
-      baseCurrency={financeSettings.baseCurrency}
-      composition={composition}
-      otherCurrencyCount={netWorth.otherCurrencyCount}
-    />
-  )
-}
-
-async function OverviewStatementSection({
-  financeSettings,
-  transactionsPromise,
-}: {
-  financeSettings: FinancesPageProps["financeSettings"]
-  transactionsPromise: Promise<Transaction[]>
-}) {
-  const transactions = await transactionsPromise
-  const monthStats = getMonthOverviewStats(
-    getBaseCurrencyTransactions(transactions, financeSettings.baseCurrency),
-    [],
-    new Date(),
-    {
-      monthStartDay: financeSettings.monthStartDay,
-      timezone: financeSettings.timezone,
-    }
-  )
-
-  return (
-    <MonthStatement
-      baseCurrency={financeSettings.baseCurrency}
-      statement={getMonthStatement(monthStats)}
-    />
-  )
-}
-
-async function OverviewCashflowChartSection({
-  chartPeriod,
-  financeSettings,
-  transactionsPromise,
-}: {
-  chartPeriod: OverviewChartPeriod
-  financeSettings: FinancesPageProps["financeSettings"]
-  transactionsPromise: Promise<Transaction[]>
-}) {
-  const transactions = await transactionsPromise
-  const now = new Date()
-  const baseCurrencyTransactions = getBaseCurrencyTransactions(
-    transactions,
-    financeSettings.baseCurrency
-  )
-  const chartData =
-    chartPeriod === "daily"
-      ? buildWeeklyCashflowBuckets(
-          baseCurrencyTransactions,
-          now,
-          financeSettings.timezone,
-          financeSettings.weekStartsOn
-        )
-      : buildMonthlyCashflowBuckets(
-          baseCurrencyTransactions,
-          now,
-          financeSettings.timezone
-        )
-
-  return (
-    <div className="space-y-4 border border-border p-4">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-            Cashflow
-          </p>
-          <h2 className="mt-2 text-2xl leading-8">Income and expenses</h2>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {(["monthly", "daily"] as const).map((period) => (
-            <FilterLink
-              key={period}
-              active={chartPeriod === period}
-              fallbackToneClassName=""
-              href={buildOverviewChartHref(period)}
-            >
-              {chartPeriodLabels[period]}
-            </FilterLink>
-          ))}
-        </div>
-      </div>
-      <OverviewCashflowChart
-        currency={financeSettings.baseCurrency}
-        data={chartData}
-      />
-    </div>
-  )
-}
-
-async function OverviewExpenseBreakdownSection({
-  categoriesPromise,
-  financeSettings,
-  transactionsPromise,
-}: {
-  categoriesPromise: Promise<Category[]>
-  financeSettings: FinancesPageProps["financeSettings"]
-  transactionsPromise: Promise<Transaction[]>
-}) {
-  const [categories, transactions] = await Promise.all([
-    categoriesPromise,
-    transactionsPromise,
-  ])
-  const expenseBreakdown = getMonthExpenseBreakdown(
-    getBaseCurrencyTransactions(transactions, financeSettings.baseCurrency),
-    categories,
-    new Date(),
-    {
-      monthStartDay: financeSettings.monthStartDay,
-      timezone: financeSettings.timezone,
-    }
-  )
-
-  return (
-    <>
-      <ExpenseBreakdownPanel
-        baseCurrency={financeSettings.baseCurrency}
-        breakdown={expenseBreakdown}
-      />
-    </>
-  )
-}
-
-async function OverviewAccountsSection({
-  accountBalancesPromise,
-  accountsPromise,
-  financeSettings,
-}: {
-  accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
-  accountsPromise: Promise<FinancialAccount[]>
-  financeSettings: FinancesPageProps["financeSettings"]
-}) {
-  const [accounts, accountBalances] = await Promise.all([
-    accountsPromise,
-    accountBalancesPromise,
-  ])
-  const composition = getAccountComposition(
-    accounts,
-    accountBalances,
-    financeSettings.baseCurrency
-  )
-
-  return (
-    <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="font-mono text-[11px] tracking-[0.18em] text-muted-foreground uppercase">
-            Accounts
-          </p>
-          <h2 className="mt-2 text-2xl leading-8">Where it sits</h2>
-        </div>
-        <p className="font-mono text-[11px] tracking-[0.16em] text-muted-foreground uppercase">
-          {accounts.length} account{accounts.length === 1 ? "" : "s"}
-        </p>
-      </div>
-      <AccountSchedule
-        accounts={accounts}
-        baseCurrency={financeSettings.baseCurrency}
-        composition={composition}
-      />
-    </div>
-  )
-}
-
-async function OverviewNotableSignalsSection({
-  categoriesPromise,
-  financeSettings,
-  transactionsPromise,
-}: {
-  categoriesPromise: Promise<Category[]>
-  financeSettings: FinancesPageProps["financeSettings"]
-  transactionsPromise: Promise<Transaction[]>
-}) {
-  const [categories, transactions] = await Promise.all([
-    categoriesPromise,
-    transactionsPromise,
-  ])
-  const monthStats = getMonthOverviewStats(
-    getBaseCurrencyTransactions(transactions, financeSettings.baseCurrency),
-    categories,
-    new Date(),
-    {
-      monthStartDay: financeSettings.monthStartDay,
-      timezone: financeSettings.timezone,
-    }
-  )
-
-  return (
-    <NotableSignals
-      baseCurrency={financeSettings.baseCurrency}
-      monthStats={monthStats}
-    />
-  )
-}
-
 function OverviewTab({
   accountBalances,
   accounts,
@@ -1471,7 +1188,7 @@ function OverviewTab({
                   key={period}
                   active={chartPeriod === period}
                   fallbackToneClassName=""
-                  href={buildOverviewChartHref(period)}
+                  update={{ chartPeriod: period }}
                 >
                   {chartPeriodLabels[period]}
                 </FilterLink>
@@ -1582,102 +1299,6 @@ export function FinancesHeaderAsideSkeleton({ tab }: { tab: FinanceTab }) {
   )
 }
 
-export function FinancesOverviewStreamingBody({
-  accountBalancesPromise,
-  accountsPromise,
-  categoriesPromise,
-  chartPeriod,
-  financeSettings,
-  transactionsPromise,
-}: {
-  accountBalancesPromise: Promise<FinancesPageProps["accountBalances"]>
-  accountsPromise: Promise<FinancialAccount[]>
-  categoriesPromise: Promise<Category[]>
-  chartPeriod: OverviewChartPeriod
-  financeSettings: FinancesPageProps["financeSettings"]
-  transactionsPromise: Promise<Transaction[]>
-}) {
-  return (
-    <section className="space-y-10 py-6">
-      <Suspense
-        fallback={
-          <OverviewNetWorthSkeleton
-            baseCurrency={financeSettings.baseCurrency}
-          />
-        }
-      >
-        <OverviewNetWorthSection
-          accountBalancesPromise={accountBalancesPromise}
-          accountsPromise={accountsPromise}
-          financeSettings={financeSettings}
-        />
-      </Suspense>
-
-      <Suspense fallback={<OverviewStatementSkeleton />}>
-        <OverviewStatementSection
-          financeSettings={financeSettings}
-          transactionsPromise={transactionsPromise}
-        />
-      </Suspense>
-
-      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-        <Suspense
-          fallback={<OverviewCashflowChartSkeleton chartPeriod={chartPeriod} />}
-        >
-          <OverviewCashflowChartSection
-            chartPeriod={chartPeriod}
-            financeSettings={financeSettings}
-            transactionsPromise={transactionsPromise}
-          />
-        </Suspense>
-
-        <Suspense fallback={<OverviewExpenseBreakdownSkeleton />}>
-          <OverviewExpenseBreakdownSection
-            categoriesPromise={categoriesPromise}
-            financeSettings={financeSettings}
-            transactionsPromise={transactionsPromise}
-          />
-        </Suspense>
-      </div>
-
-      <Suspense fallback={<OverviewAccountsSkeleton />}>
-        <OverviewAccountsSection
-          accountBalancesPromise={accountBalancesPromise}
-          accountsPromise={accountsPromise}
-          financeSettings={financeSettings}
-        />
-      </Suspense>
-
-      <Suspense fallback={<OverviewNotableSignalsSkeleton />}>
-        <OverviewNotableSignalsSection
-          categoriesPromise={categoriesPromise}
-          financeSettings={financeSettings}
-          transactionsPromise={transactionsPromise}
-        />
-      </Suspense>
-    </section>
-  )
-}
-
-export function FinancesOverviewStreamingPage(
-  props: Parameters<typeof FinancesOverviewStreamingBody>[0]
-) {
-  return (
-    <FinancesShell
-      tab="overview"
-      aside={
-        <Suspense fallback={<OverviewTransactionCountSkeleton />}>
-          <OverviewTransactionCount
-            transactionsPromise={props.transactionsPromise}
-          />
-        </Suspense>
-      }
-    >
-      <FinancesOverviewStreamingBody {...props} />
-    </FinancesShell>
-  )
-}
-
 function TransactionTab({
   accountBalances,
   accounts,
@@ -1686,9 +1307,6 @@ function TransactionTab({
   categories,
   filters,
   groupedTransactions,
-  hasMoreDays,
-  nextDayOffset,
-  transactionFilters,
   timezone,
 }: {
   accountBalances: FinancesPageProps["accountBalances"]
@@ -1698,9 +1316,6 @@ function TransactionTab({
   categories: Category[]
   filters: FinancesPageProps["filters"]
   groupedTransactions: TransactionGroup[]
-  hasMoreDays: boolean
-  nextDayOffset: number | null
-  transactionFilters: unknown
   timezone: string
 }) {
   return (
@@ -1751,9 +1366,6 @@ function TransactionTab({
             accounts={accounts}
             categories={categories}
             groups={groupedTransactions}
-            hasMoreDays={hasMoreDays}
-            nextDayOffset={nextDayOffset}
-            transactionFilters={transactionFilters}
             timezone={timezone}
           />
         ) : (
@@ -2299,18 +1911,15 @@ export function FinancesTabSkeleton({ tab }: { tab: FinanceTab }) {
   return <ManageTabSkeleton />
 }
 
-export function FinancesTabBody({
+export const FinancesTabBody = memo(function FinancesTabBody({
   accountBalances,
   accounts,
   categories,
   chartPeriod = "monthly",
   financeSettings,
-  hasMoreTransactionDays = false,
-  nextTransactionDayOffset = null,
   recurringPayments = [],
   tab,
   timezone,
-  transactionFilters,
   transactions,
   filters,
 }: FinancesPageProps) {
@@ -2318,7 +1927,8 @@ export function FinancesTabBody({
     accounts.map((account) => [account.id, account.name])
   )
   const categoryById = new Map(categories.map((item) => [item.id, item]))
-  const groupedTransactions = groupTransactions(transactions, timezone)
+  const groupedTransactions =
+    tab === "transactions" ? groupTransactions(transactions, timezone) : []
   const activeAccounts = filters.accountIds
     .map((accountId) => accountNames.get(accountId))
     .filter((name): name is string => Boolean(name))
@@ -2348,9 +1958,6 @@ export function FinancesTabBody({
           categories={categories}
           filters={filters}
           groupedTransactions={groupedTransactions}
-          hasMoreDays={hasMoreTransactionDays}
-          nextDayOffset={nextTransactionDayOffset}
-          transactionFilters={transactionFilters}
           timezone={timezone}
         />
       ) : null}
@@ -2374,7 +1981,7 @@ export function FinancesTabBody({
       ) : null}
     </>
   )
-}
+})
 
 export function FinancesPage(props: FinancesPageProps) {
   return (
